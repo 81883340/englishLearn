@@ -167,32 +167,28 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
 
     if (userInput.toLowerCase() === currentWord.word.toLowerCase()) {
       // 答对
-      setTimeout(() => {
-        setShowResult('correct')
-        const newStreak = progress.streak + 1
-        const newCorrect = progress.correctAnswers + 1
+      setShowResult('correct')
+      const newStreak = progress.streak + 1
+      const newCorrect = progress.correctAnswers + 1
 
-        updateProgress({
-          totalLearned: progress.totalLearned + 1,
-          correctAnswers: newCorrect,
-          streak: newStreak
-        })
+      updateProgress({
+        totalLearned: progress.totalLearned + 1,
+        correctAnswers: newCorrect,
+        streak: newStreak
+      })
 
-        if (!learnedWords.includes(currentWord.id)) {
-          setLearnedWords([...learnedWords, currentWord.id])
-        }
+      if (!learnedWords.includes(currentWord.id)) {
+        setLearnedWords([...learnedWords, currentWord.id])
+      }
 
-        triggerConfetti()
-      }, 0)
+      triggerConfetti()
     } else {
       // 答错
-      setTimeout(() => {
-        setShowResult('wrong')
-        updateProgress({
-          wrongAnswers: progress.wrongAnswers + 1,
-          streak: 0
-        })
-      }, 0)
+      setShowResult('wrong')
+      updateProgress({
+        wrongAnswers: progress.wrongAnswers + 1,
+        streak: 0
+      })
     }
   }, [currentWord, userInput, progress, learnedWords, updateProgress, setLearnedWords])
 
