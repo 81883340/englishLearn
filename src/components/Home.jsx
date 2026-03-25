@@ -85,11 +85,6 @@ function Home({ progress, wordLibrary, setCurrentPage }) {
           <div className="stat-value">{progress.badges.length}</div>
           <div className="stat-label">获得徽章</div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon">📚</div>
-          <div className="stat-value">{wordLibrary.length}</div>
-          <div className="stat-label">词库数量</div>
-        </div>
       </div>
 
       <div style={{
@@ -116,6 +111,11 @@ function Home({ progress, wordLibrary, setCurrentPage }) {
           </button>
         </div>
 
+        <div className="stat-card">
+          <div className="stat-icon">📚</div>
+          <div className="stat-value">{wordLibrary.length}</div>
+          <div className="stat-label">词库数量</div>
+        </div>
         <div className="card" style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => setCurrentPage('library')}>
           <div style={{ fontSize: '60px', marginBottom: '20px' }}>📝</div>
           <h2 style={{
