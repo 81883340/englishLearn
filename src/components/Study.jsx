@@ -170,6 +170,28 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     }
   }, [mode, currentWordIndex, wordLibrary, handleKeyPress, resetToNextWord, submitAnswer])
 
+  useEffect(() => {
+    window.addEventListener('keydown', handlePhysicalKeyboard)
+    return () => window.removeEventListener('keydown', handlePhysicalKeyboard)
+  }, [handlePhysicalKeyboard])
+
+  const toggleMode = () => {
+    setMode(prev => prev === 'learn' ? 'exam' : 'learn')
+    // 切换模式后重置状态
+    setUserInput('')
+    setShowResult(null)
+    setShowHint(false)
+    setHasCheckedAnswer(false)
+    if (mode === 'exam') {
+      // 从考试切换到学习，重置到第一个单词
+      setCurrentWordIndex(0)
+      setCurrentWord(wordLibrary[0])
+    } else {
+      // 从学习切换到考试，选择随机单词
+      setCurrentWord(getRandomWord())
+    }
+  }
+
   const handleWrong = useCallback(() => {
     setHasCheckedAnswer(true)
     setShowResult('wrong')
@@ -453,10 +475,10 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
             </button>
           )}
           {mode === 'exam' && !hasCheckedAnswer && (
-            <button 
+            <button
               type="button"
-              className="btn btn-primary" 
-              onClick={submitAnswer} 
+              className="btn btn-primary"
+              onClick={submitAnswer}
               disabled={userInput.length === 0}
             >
               检查答案 (Enter)
