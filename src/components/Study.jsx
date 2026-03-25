@@ -129,13 +129,13 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         handleKeyPress('SPACE')
       } else if (key === 'enter') {
         // 回车键提交答案
-        submitAnswer()
         e.preventDefault()
+        submitAnswer()
       } else if (key.length === 1 && /[a-z]/.test(key)) {
         handleKeyPress(key)
       }
     }
-  }, [mode, currentWordIndex, wordLibrary, handleKeyPress, resetToNextWord])
+  }, [mode, currentWordIndex, wordLibrary, handleKeyPress, resetToNextWord, submitAnswer])
 
   useEffect(() => {
     window.addEventListener('keydown', handlePhysicalKeyboard)
