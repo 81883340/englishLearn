@@ -74,9 +74,9 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setPressedKey(key)
     setTimeout(() => setPressedKey(null), 150)
 
-    // 如果已提交，按任意键跳转到下一个单词
+    // 如果已提交，按回车或空格键跳转到下一个单词（但不包括字母键）
     if (isSubmitted) {
-      if (key === 'enter' || key === ' ' || key.length === 1) {
+      if (key === 'enter' || key === ' ') {
         nextWord()
       }
       return
