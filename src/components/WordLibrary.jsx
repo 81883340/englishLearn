@@ -1,50 +1,57 @@
 import React, { useState, useEffect } from 'react'
 
+// 免费翻译接口
+const translate = async (text) => {
+  if (!text) return "";
+  try {
+    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|zh-CN`);
+    const data = await res.json();
+    return data.responseData?.translatedText || text;
+  } catch {
+    return text;
+  }
+};
+
 // 获取单词信息（音标、释义、例句）
 const fetchWordInfo = async (word) => {
   try {
     const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
-    if (!response.ok) return null
-
-    const data = await response.json()
-    if (!data || data.length === 0) return null
-
-    const entry = data[0]
-
-    // 获取音标
-    let phonetic = entry.phonetic || ''
-    if (!phonetic && entry.phonetics) {
-      const phoneticObj = entry.phonetics.find(p => p.text)
-      if (phoneticObj) phonetic = phoneticObj.text
-    }
-
-    // 获取释义（英文）和例句
+    let phonetic = ''
     let englishDefinition = ''
     let exampleSentence = ''
 
-    if (entry.meanings && entry.meanings.length > 0) {
-      const firstMeaning = entry.meanings[0]
-      if (firstMeaning.definitions && firstMeaning.definitions.length > 0) {
-        const firstDef = firstMeaning.definitions[0]
-        englishDefinition = firstDef.definition || ''
-        exampleSentence = firstDef.example || ''
+    // 如果字典API请求成功，获取详细信息
+    if (response.ok) {
+      const data = await response.json()
+      if (data && data.length > 0) {
+        const entry = data[0]
+
+        // 获取音标
+        phonetic = entry.phonetic || ''
+        if (!phonetic && entry.phonetics) {
+          const phoneticObj = entry.phonetics.find(p => p.text)
+          if (phoneticObj) phonetic = phoneticObj.text
+        }
+
+        // 获取释义（英文）和例句
+        if (entry.meanings && entry.meanings.length > 0) {
+          const firstMeaning = entry.meanings[0]
+          if (firstMeaning.definitions && firstMeaning.definitions.length > 0) {
+            const firstDef = firstMeaning.definitions[0]
+            englishDefinition = firstDef.definition || ''
+            exampleSentence = firstDef.example || ''
+          }
+        }
       }
     }
 
-    // 使用浏览器内置的翻译API获取中文释义
-    let chineseMeaning = ''
-    if (englishDefinition && typeof window !== 'undefined' && 'translation' in window) {
-      try {
-        chineseMeaning = await window.translation.translate(englishDefinition, 'zh-CN')
-      } catch (e) {
-        console.log('翻译API不可用，使用备用方案')
-      }
+    // 如果没有找到英文释义，使用单词本身作为释义
+    if (!englishDefinition) {
+      englishDefinition = word
     }
 
-    // 如果浏览器翻译API不可用，尝试使用简单的词库映射
-    if (!chineseMeaning) {
-      chineseMeaning = await getChineseMeaning(word.toLowerCase())
-    }
+    // 使用免费翻译API获取中文释义
+    const chineseMeaning = await translate(englishDefinition)
 
     return {
       word: word.toLowerCase(),
@@ -55,7 +62,15 @@ const fetchWordInfo = async (word) => {
     }
   } catch (error) {
     console.error('获取单词信息失败:', error)
-    return null
+    // 即使出错也返回基本结构
+    const chineseMeaning = await translate(word)
+    return {
+      word: word.toLowerCase(),
+      phonetic: '',
+      englishDefinition: word,
+      chineseMeaning,
+      example: `${word} - example sentence`
+    }
   }
 }
 
