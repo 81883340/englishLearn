@@ -25,6 +25,7 @@ const triggerConfetti = () => {
 function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, progress, setCurrentPage }) {
   const [mode, setMode] = useState('learn') // 'learn' | 'exam'
   const [currentWord, setCurrentWord] = useState(null)
+  const [currentWordIndex, setCurrentWordIndex] = useState(0)
   const [userInput, setUserInput] = useState('')
   const [showResult, setShowResult] = useState(null) // 'correct' | 'wrong' | null
   const [showHint, setShowHint] = useState(false)
@@ -39,15 +40,20 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
 
   useEffect(() => {
     if (wordLibrary.length > 0) {
-      setCurrentWord(getRandomWord())
+      if (mode === 'learn') {
+        setCurrentWordIndex(0)
+        setCurrentWord(wordLibrary[0])
+      } else {
+        setCurrentWord(getRandomWord())
+      }
     }
-  }, [wordLibrary, learnedWords])
+  }, [wordLibrary, learnedWords, mode])
 
   useEffect(() => {
-    if (userInput === currentWord?.word) {
+    if (userInput === currentWord?.word && mode === 'exam') {
       handleCorrect()
     }
-  }, [userInput])
+  }, [userInput, mode])
 
   const handleKeyPress = (key) => {
     if (showResult) return
@@ -68,6 +74,16 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setPressedKey(key)
     setTimeout(() => setPressedKey(null), 150)
 
+    // 学习模式：按任意键切换到下一个单词（排除特殊键）
+    if (mode === 'learn' && !showResult) {
+      if (!e.ctrlKey && !e.altKey && !e.metaKey &&
+          key !== 'control' && key !== 'alt' && key !== 'meta' &&
+          key !== 'backspace' && key !== 'tab' && key !== 'escape') {
+        nextWord()
+        return
+      }
+    }
+
     if (showResult) {
       if (key === 'enter') {
         nextWord()
@@ -75,15 +91,18 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
       return
     }
 
-    if (key === 'backspace') {
-      handleKeyPress('BACK')
-    } else if (key === ' ') {
-      e.preventDefault()
-      handleKeyPress('SPACE')
-    } else if (key === 'enter') {
-      nextWord()
-    } else if (key.length === 1 && /[a-z]/.test(key)) {
-      handleKeyPress(key)
+    // 考试模式：处理拼写输入
+    if (mode === 'exam') {
+      if (key === 'backspace') {
+        handleKeyPress('BACK')
+      } else if (key === ' ') {
+        e.preventDefault()
+        handleKeyPress('SPACE')
+      } else if (key === 'enter') {
+        nextWord()
+      } else if (key.length === 1 && /[a-z]/.test(key)) {
+        handleKeyPress(key)
+      }
     }
   }
 
@@ -134,7 +153,26 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setUserInput('')
     setShowResult(null)
     setShowHint(false)
-    setCurrentWord(getRandomWord())
+
+    if (mode === 'learn') {
+      const newIndex = (currentWordIndex + 1) % wordLibrary.length
+      setCurrentWordIndex(newIndex)
+      setCurrentWord(wordLibrary[newIndex])
+    } else {
+      setCurrentWord(getRandomWord())
+    }
+  }
+
+  const prevWord = () => {
+    setUserInput('')
+    setShowResult(null)
+    setShowHint(false)
+
+    if (mode === 'learn') {
+      const newIndex = (currentWordIndex - 1 + wordLibrary.length) % wordLibrary.length
+      setCurrentWordIndex(newIndex)
+      setCurrentWord(wordLibrary[newIndex])
+    }
   }
 
   const keyboardRows = [
@@ -374,8 +412,14 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
           display: 'flex',
           gap: '12px',
           justifyContent: 'center',
-          marginBottom: '40px'
+          marginBottom: '40px',
+          flexWrap: 'wrap'
         }}>
+          {mode === 'learn' && (
+            <button className="btn btn-secondary" onClick={prevWord}>
+              ← 上一个
+            </button>
+          )}
           <button
             className="btn btn-secondary"
             onClick={() => setShowHint(!showHint)}
@@ -387,9 +431,14 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
               下一个单词 →
             </button>
           )}
-          {!showResult && (
+          {!showResult && mode === 'exam' && (
             <button className="btn btn-danger" onClick={handleWrong}>
               显示答案
+            </button>
+          )}
+          {mode === 'learn' && (
+            <button className="btn btn-primary" onClick={nextWord}>
+              下一个单词 →
             </button>
           )}
           {mode === 'learn' && (
