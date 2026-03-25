@@ -74,19 +74,18 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setPressedKey(key)
     setTimeout(() => setPressedKey(null), 150)
 
-    // 如果已提交，按回车或空格键跳转到下一个单词（按字母键先重置状态再输入）
+    // 如果已提交，按回车或空格键跳转到下一个单词
+    // 按字母键：先切换到下一个单词，然后输入
     if (isSubmitted) {
       if (key === 'enter' || key === ' ') {
         nextWord()
       } else if (key.length === 1 && /[a-z]/.test(key)) {
-        // 先重置到新单词状态，然后输入这个字母
-        setUserInput('')
-        setShowResult(null)
-        setShowHint(false)
-        setIsSubmitted(false)
-        const newWord = getRandomWord(currentWord?.id)
-        setCurrentWord(newWord)
-        setUserInput(key)
+        // 先调用 nextWord 重置状态，然后输入这个字母
+        nextWord()
+        // 使用 setTimeout 确保 state 更新完成后再输入
+        setTimeout(() => {
+          setUserInput(key)
+        }, 0)
       }
       return
     }
@@ -121,7 +120,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   useEffect(() => {
     window.addEventListener('keydown', handlePhysicalKeyboard)
     return () => window.removeEventListener('keydown', handlePhysicalKeyboard)
-  }, [mode, isSubmitted, userInput, currentWord])
+  }, [mode, isSubmitted])
 
   const toggleMode = () => {
     setMode(prev => prev === 'learn' ? 'exam' : 'learn')
