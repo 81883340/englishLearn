@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 
 // 简单的纸屑效果
 const triggerConfetti = () => {
@@ -32,7 +32,13 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   const [pressedKey, setPressedKey] = useState(null)
   const [isSubmitted, setIsSubmitted] = useState(false)
 
-  const getRandomWord = (excludeId = null) => {
+  // 使用 ref 来避免闭包问题
+  const isSubmittedRef = useRef(isSubmitted)
+  useEffect(() => {
+    isSubmittedRef.current = isSubmitted
+  }, [isSubmitted])
+
+  const getRandomWord = useCallback((excludeId = null) => {
     const unlearned = wordLibrary.filter(w => !learnedWords.includes(w.id))
     let pool = unlearned.length > 0 ? unlearned : wordLibrary
 
@@ -42,8 +48,9 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
 
     const randomIndex = Math.floor(Math.random() * pool.length)
     return pool[randomIndex]
-  }
+  }, [wordLibrary, learnedWords])
 
+  // 初始化单词
   useEffect(() => {
     if (wordLibrary.length > 0) {
       if (mode === 'learn') {
@@ -53,10 +60,21 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         setCurrentWord(getRandomWord())
       }
     }
-  }, [wordLibrary, learnedWords, mode])
+  }, [wordLibrary, learnedWords, mode, getRandomWord])
 
-  const handleKeyPress = (key) => {
-    if (isSubmitted) return
+  // 重置到新单词（用于考试模式）
+  const resetToNextWord = useCallback(() => {
+    const newWord = getRandomWord(currentWord?.id)
+    setCurrentWord(newWord)
+    setUserInput('')
+    setShowResult(null)
+    setShowHint(false)
+    setIsSubmitted(false)
+  }, [currentWord, getRandomWord])
+
+  // 虚拟键盘按键处理（未提交状态）
+  const handleKeyPress = useCallback((key) => {
+    if (isSubmittedRef.current) return
 
     if (key === 'BACK') {
       setUserInput(prev => prev.slice(0, -1))
@@ -65,43 +83,45 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     } else if (key.length === 1) {
       setUserInput(prev => prev + key)
     }
-  }
+  }, [])
 
-  const handlePhysicalKeyboard = (e) => {
+  // 物理键盘处理 - 使用 useCallback 避免频繁重建
+  const handlePhysicalKeyboard = useCallback((e) => {
     const key = e.key.toLowerCase()
 
     // 按键高亮效果
     setPressedKey(key)
     setTimeout(() => setPressedKey(null), 150)
 
-    // 如果已提交，按回车或空格键跳转到下一个单词
-    // 按字母键：先切换到下一个单词，然后输入
-    if (isSubmitted) {
-      if (key === 'enter' || key === ' ') {
-        nextWord()
-      } else if (key.length === 1 && /[a-z]/.test(key)) {
-        // 先调用 nextWord 重置状态，然后输入这个字母
-        nextWord()
-        // 使用 setTimeout 确保 state 更新完成后再输入
-        setTimeout(() => {
-          setUserInput(key)
-        }, 0)
+    const submitted = isSubmittedRef.current
+
+    // 考试模式 - 已提交状态
+    if (mode === 'exam' && submitted) {
+      // 按任意键继续到下一个单词
+      if (key.length === 1 || key === 'enter' || key === ' ') {
+        resetToNextWord()
       }
       return
     }
 
-    // 学习模式：按任意键切换到下一个单词（排除特殊键）
+    // 学习模式
     if (mode === 'learn') {
       if (!e.ctrlKey && !e.altKey && !e.metaKey &&
           key !== 'control' && key !== 'alt' && key !== 'meta' &&
           key !== 'backspace' && key !== 'tab' && key !== 'escape') {
-        nextWord()
+        const newIndex = (currentWordIndex + 1) % wordLibrary.length
+        setCurrentWordIndex(newIndex)
+        setCurrentWord(wordLibrary[newIndex])
+        setUserInput('')
+        setShowResult(null)
+        setShowHint(false)
+        setIsSubmitted(false)
         return
       }
     }
 
-    // 考试模式：处理拼写输入和提交
-    if (mode === 'exam' && !isSubmitted) {
+    // 考试模式 - 未提交状态
+    if (mode === 'exam' && !submitted) {
       if (key === 'backspace') {
         handleKeyPress('BACK')
       } else if (key === ' ') {
@@ -115,19 +135,31 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         handleKeyPress(key)
       }
     }
-  }
+  }, [mode, currentWordIndex, wordLibrary, handleKeyPress, resetToNextWord])
 
   useEffect(() => {
     window.addEventListener('keydown', handlePhysicalKeyboard)
     return () => window.removeEventListener('keydown', handlePhysicalKeyboard)
-  }, [mode, isSubmitted])
+  }, [handlePhysicalKeyboard])
 
   const toggleMode = () => {
     setMode(prev => prev === 'learn' ? 'exam' : 'learn')
-    nextWord()
+    // 切换模式后重置状态
+    setUserInput('')
+    setShowResult(null)
+    setShowHint(false)
+    setIsSubmitted(false)
+    if (mode === 'exam') {
+      // 从考试切换到学习，重置到第一个单词
+      setCurrentWordIndex(0)
+      setCurrentWord(wordLibrary[0])
+    } else {
+      // 从学习切换到考试，选择随机单词
+      setCurrentWord(getRandomWord())
+    }
   }
 
-  const submitAnswer = () => {
+  const submitAnswer = useCallback(() => {
     if (!currentWord || userInput.length === 0) return
 
     setIsSubmitted(true)
@@ -162,16 +194,16 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         })
       }, 0)
     }
-  }
+  }, [currentWord, userInput, progress, learnedWords, updateProgress, setLearnedWords])
 
-  const handleWrong = () => {
+  const handleWrong = useCallback(() => {
     setIsSubmitted(true)
     setShowResult('wrong')
     updateProgress({
       wrongAnswers: progress.wrongAnswers + 1,
       streak: 0
     })
-  }
+  }, [updateProgress])
 
   const nextWord = () => {
     setUserInput('')
