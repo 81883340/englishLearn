@@ -31,6 +31,29 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   const [showHint, setShowHint] = useState(false)
   const [pressedKey, setPressedKey] = useState(null)
 
+  // 使用 ref 来保存最新状态，避免闭包问题
+  const showResultRef = useRef(null)
+  const modeRef = useRef(null)
+  const userInputRef = useRef('')
+  const currentWordRef = useRef(null)
+
+  // 同步 ref 和 state
+  useEffect(() => {
+    showResultRef.current = showResult
+  }, [showResult])
+
+  useEffect(() => {
+    modeRef.current = mode
+  }, [mode])
+
+  useEffect(() => {
+    userInputRef.current = userInput
+  }, [userInput])
+
+  useEffect(() => {
+    currentWordRef.current = currentWord
+  }, [currentWord])
+
   const getRandomWord = (excludeId = null) => {
     const unlearned = wordLibrary.filter(w => !learnedWords.includes(w.id))
     let pool = unlearned.length > 0 ? unlearned : wordLibrary
@@ -56,7 +79,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   }, [wordLibrary, learnedWords, mode])
 
   const handleKeyPress = (key) => {
-    if (showResult) return
+    if (showResultRef.current) return
 
     if (key === 'BACK') {
       setUserInput(prev => prev.slice(0, -1))
@@ -75,7 +98,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setTimeout(() => setPressedKey(null), 150)
 
     // 如果显示结果中，按任意键（回车、空格或字母）跳转到下一个单词
-    if (showResult) {
+    if (showResultRef.current) {
       if (key === 'enter' || key === ' ' || key.length === 1) {
         nextWord()
       }
@@ -83,7 +106,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     }
 
     // 学习模式：按任意键切换到下一个单词（排除特殊键）
-    if (mode === 'learn') {
+    if (modeRef.current === 'learn') {
       if (!e.ctrlKey && !e.altKey && !e.metaKey &&
           key !== 'control' && key !== 'alt' && key !== 'meta' &&
           key !== 'backspace' && key !== 'tab' && key !== 'escape') {
@@ -93,7 +116,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     }
 
     // 考试模式：处理拼写输入和提交
-    if (mode === 'exam' && !showResult) {
+    if (modeRef.current === 'exam' && !showResultRef.current) {
       if (key === 'backspace') {
         handleKeyPress('BACK')
       } else if (key === ' ') {
@@ -102,6 +125,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
       } else if (key === 'enter') {
         // 回车键提交答案
         checkAnswer()
+        e.preventDefault()
       } else if (key.length === 1 && /[a-z]/.test(key)) {
         handleKeyPress(key)
       }
@@ -111,7 +135,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   useEffect(() => {
     window.addEventListener('keydown', handlePhysicalKeyboard)
     return () => window.removeEventListener('keydown', handlePhysicalKeyboard)
-  }, [showResult, userInput, currentWord, mode])
+  }, [showResultRef, modeRef])
 
   const toggleMode = () => {
     setMode(prev => prev === 'learn' ? 'exam' : 'learn')
@@ -120,6 +144,9 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
 
   // 考试模式：检查答案
   const checkAnswer = () => {
+    const currentWord = currentWordRef.current
+    const userInput = userInputRef.current
+
     if (!currentWord || userInput.length === 0) return
 
     if (userInput.toLowerCase() === currentWord.word.toLowerCase()) {
