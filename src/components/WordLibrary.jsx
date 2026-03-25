@@ -1110,18 +1110,9 @@ const techTermsMap = {
   'able': '能够'
 };
 
-// 翻译API池 - 轮换使用多个免费API
+// 翻译API池 - 优先使用Google翻译API
 const translationAPIs = [
-  // MyMemory (5000 chars/day)
-  {
-    name: 'MyMemory',
-    fn: async (text) => {
-      const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|zh-CN`);
-      const data = await res.json();
-      return data.responseData?.translatedText || text;
-    }
-  },
-  // Google Translate (免费，但有速率限制)
+  // Google Translate (免费，有速率限制但质量好)
   {
     name: 'GoogleTranslate',
     fn: async (text) => {
@@ -1137,34 +1128,51 @@ const translationAPIs = [
         return text;
       }
     }
+  },
+  // MyMemory (5000 chars/day - 备用)
+  {
+    name: 'MyMemory',
+    fn: async (text) => {
+      const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|zh-CN`);
+      const data = await res.json();
+      return data.responseData?.translatedText || text;
+    }
   }
 ];
 
 let currentAPIIndex = 0;
 
-// 免费翻译接口（带API池轮换）
+// 免费翻译接口（优先本地映射，然后Google翻译API）
 const translate = async (text) => {
   if (!text) return "";
 
-  // 先检查技术术语映射
+  // 优先检查技术术语映射
   const textLower = text.toLowerCase();
   if (techTermsMap[textLower]) {
     console.log(`使用本地映射: "${text}" -> "${techTermsMap[textLower]}"`);
     return techTermsMap[textLower];
   }
 
-  // 尝试使用API池中的API
-  for (let i = 0; i < translationAPIs.length; i++) {
-    const api = translationAPIs[(currentAPIIndex + i) % translationAPIs.length];
-    try {
-      console.log(`尝试使用 ${api.name} API翻译: "${text}"`);
-      const translated = await api.fn(text);
-      console.log(`${api.name} 翻译结果: "${text}" -> "${translated}"`);
-      currentAPIIndex = (currentAPIIndex + i + 1) % translationAPIs.length;
-      return translated;
-    } catch (error) {
-      console.error(`${api.name} 翻译失败:`, error);
-    }
+  // 优先使用Google翻译API
+  const googleAPI = translationAPIs[0];
+  try {
+    console.log(`优先使用 ${googleAPI.name} API翻译: "${text}"`);
+    const translated = await googleAPI.fn(text);
+    console.log(`${googleAPI.name} 翻译结果: "${text}" -> "${translated}"`);
+    return translated;
+  } catch (error) {
+    console.error(`${googleAPI.name} 翻译失败:`, error);
+  }
+
+  // Google失败，尝试MyMemory
+  const myMemoryAPI = translationAPIs[1];
+  try {
+    console.log(`尝试使用 ${myMemoryAPI.name} API翻译: "${text}"`);
+    const translated = await myMemoryAPI.fn(text);
+    console.log(`${myMemoryAPI.name} 翻译结果: "${text}" -> "${translated}"`);
+    return translated;
+  } catch (error) {
+    console.error(`${myMemoryAPI.name} 翻译失败:`, error);
   }
 
   // 所有API都失败，返回原文
@@ -1204,20 +1212,29 @@ const fetchWordInfo = async (word) => {
             const firstDef = firstMeaning.definitions[0]
             englishDefinition = firstDef.definition || ''
 
-            // 尝试获取例句，优先查找有例句的定义
+            // 尝试获取例句 - 在当前定义中查找
             if (firstDef.example) {
               exampleSentence = firstDef.example
+              console.log(`找到例句 (当前定义): ${exampleSentence}`)
             } else {
-              // 如果第一个定义没有例句，查找其他定义
-              for (const def of firstMeaning.definitions) {
-                if (def.example) {
-                  exampleSentence = def.example
-                  break
+              // 如果当前定义没有例句，遍历所有定义和含义寻找例句
+              for (const meaning of entry.meanings) {
+                if (meaning.definitions) {
+                  for (const def of meaning.definitions) {
+                    if (def.example) {
+                      exampleSentence = def.example
+                      console.log(`找到例句 (其他定义): ${exampleSentence}`)
+                      break
+                    }
+                  }
+                  if (exampleSentence) break
                 }
               }
             }
           }
         }
+
+        console.log(`字典API返回 - 音标: "${phonetic}", 英文释义: "${englishDefinition.substring(0, 50)}...", 例句: "${exampleSentence || '无'}"`)
       }
     } else {
       console.log(`字典API请求失败 (${response.status}): ${word}`);
