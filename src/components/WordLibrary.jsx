@@ -1181,14 +1181,15 @@ const translate = async (text) => {
   return text;
 };
 
-// 获取单词信息（音标、释义、例句）- 使用 Free Dictionary API（包含翻译）
+// 获取单词信息（音标、中文、英文释义、例句）- 使用 Free Dictionary API
+// 中文翻译优先使用 Google API，备选 Free Dictionary API
 const fetchWordInfo = async (word) => {
   console.log(`开始获取单词信息: ${word}`);
   const wordLower = word.toLowerCase();
 
   try {
-    // 使用 Free Dictionary API，包含翻译、音标、例句
-    // 添加 translations=true 查询参数以获取翻译
+    // 使用 Free Dictionary API 获取音标、英文释义、例句和备选中文翻译
+    // 添加 translations=true 查询参数以获取翻译（作为备选）
     const response = await fetch(`https://freedictionaryapi.com/api/v1/entries/en/${word}?translations=true`)
 
     if (response.ok) {
@@ -1224,13 +1225,10 @@ const fetchWordInfo = async (word) => {
             translations: firstSense.translations
           })
 
-          // 获取例句 - 优先从 examples 数组查找，如果没有则从 quotes 数组查找
+          // 获取例句 - 只从 examples 数组查找（quotes 是历史文献引用，不适合学习）
           if (firstSense.examples && firstSense.examples.length > 0) {
             exampleSentence = firstSense.examples[0]
             console.log(`找到例句 (examples): "${exampleSentence}"`)
-          } else if (firstSense.quotes && firstSense.quotes.length > 0) {
-            exampleSentence = firstSense.quotes[0].text
-            console.log(`找到例句 (quotes): "${exampleSentence}"`)
           }
 
           // 如果第一个含义没有例句，查找其他含义（包括subsenses）
@@ -1245,33 +1243,24 @@ const fetchWordInfo = async (word) => {
                     exampleSentence = subsense.examples[0]
                     console.log(`在subsenses中找到例句: "${exampleSentence}"`)
                     break
-                  } else if (subsense.quotes && subsense.quotes.length > 0) {
-                    exampleSentence = subsense.quotes[0].text
-                    console.log(`在subsenses的quotes中找到例句: "${exampleSentence}"`)
-                    break
                   }
                   allSenses.push(subsense)
                 }
               }
-              
-              if (!exampleSentence) {
-                // 遍历收集的所有senses查找例句
-                for (const sense of allSenses) {
-                  if (sense.examples && sense.examples.length > 0) {
-                    exampleSentence = sense.examples[0]
-                    console.log(`在其他senses中找到例句 (examples): "${exampleSentence}"`)
-                    break
-                  } else if (sense.quotes && sense.quotes.length > 0) {
-                    exampleSentence = sense.quotes[0].text
-                    console.log(`在其他senses中找到例句 (quotes): "${exampleSentence}"`)
-                    break
-                  }
-                  if (exampleSentence) break
-                }
+            }
+
+            // 遍历收集的所有senses查找例句
+            for (const sense of allSenses) {
+              if (sense.examples && sense.examples.length > 0) {
+                exampleSentence = sense.examples[0]
+                console.log(`在其他senses中找到例句 (examples): "${exampleSentence}"`)
+                break
               }
+              if (exampleSentence) break
+            }
           }
 
-          // 获取中文翻译 - 在所有含义的 translations 中查找
+          // 获取中文翻译 - 在所有含义的 translations 中查找（作为备选）
           let chineseTranslation = ''
           for (const sense of entry.senses) {
             if (sense.translations && sense.translations.length > 0) {
@@ -1280,19 +1269,32 @@ const fetchWordInfo = async (word) => {
               )
               if (zhTranslation) {
                 chineseTranslation = zhTranslation.word
-                console.log(`找到中文翻译: "${chineseTranslation}"`)
+                console.log(`找到中文翻译（备选）: "${chineseTranslation}"`)
                 break
               }
             }
             if (chineseTranslation) break
           }
 
-          console.log(`字典API返回 - 音标: "${phonetic}", 英文释义: "${englishDefinition.substring(0, 50)}...", 中文: "${chineseTranslation}", 例句: "${exampleSentence || '无'}"`)
+          console.log(`字典API返回 - 音标: "${phonetic}", 英文释义: "${englishDefinition.substring(0, 50)}...", 例句: "${exampleSentence || '无'}"`)
 
-          // 如果API没有返回中文翻译，使用翻译API
-          let chineseMeaning = chineseTranslation
-          if (!chineseMeaning) {
-            console.log(`API未返回中文翻译，使用翻译API`)
+          // 获取中文翻译 - 优先级：本地映射 > Google API > Free Dictionary API 翻译
+          console.log(`获取中文翻译: "${word}"`)
+          let chineseMeaning = techTermsMap[wordLower]
+          if (chineseMeaning) {
+            console.log(`使用本地映射: "${wordLower}" -> "${chineseMeaning}"`)
+          } else {
+            // 使用 Google API
+            chineseMeaning = await translate(word)
+            if (chineseMeaning === word) {
+              // Google API 失败，使用 Free Dictionary API 的翻译作为备选
+              if (chineseTranslation) {
+                chineseMeaning = chineseTranslation
+                console.log(`使用 Free Dictionary API 翻译（备选）: "${chineseMeaning}"`)
+              } else {
+                console.log(`所有翻译来源都失败，使用原文`)
+              }
+            }
           }
 
           console.log(`单词 ${word} 最终结果:`, {
@@ -1317,7 +1319,12 @@ const fetchWordInfo = async (word) => {
 
     // 如果字典API没有返回数据，使用翻译API
     console.log(`字典API无数据，使用翻译API翻译单词: "${word}"`)
-    const chineseMeaning = await translate(word);
+    
+    // 优先使用本地映射
+    let chineseMeaning = techTermsMap[wordLower];
+    if (!chineseMeaning) {
+      chineseMeaning = await translate(word);
+    }
 
     return {
       word: wordLower,
@@ -1326,7 +1333,6 @@ const fetchWordInfo = async (word) => {
       chineseMeaning,
       example: `${word} - example sentence`
     }
-  }
   } catch (error) {
     console.error('获取单词信息失败:', error)
     // 即使出错也返回基本结构
