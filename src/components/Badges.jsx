@@ -25,7 +25,6 @@ function Badges({ progress, badgeDefinitions, setCurrentPage }) {
           fontWeight: '800',
           marginBottom: '16px',
           background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
-          -webkitBackgroundClip: 'text',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text'
