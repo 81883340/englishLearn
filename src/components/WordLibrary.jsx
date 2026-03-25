@@ -1203,7 +1203,19 @@ const fetchWordInfo = async (word) => {
           if (firstMeaning.definitions && firstMeaning.definitions.length > 0) {
             const firstDef = firstMeaning.definitions[0]
             englishDefinition = firstDef.definition || ''
-            exampleSentence = firstDef.example || ''
+
+            // 尝试获取例句，优先查找有例句的定义
+            if (firstDef.example) {
+              exampleSentence = firstDef.example
+            } else {
+              // 如果第一个定义没有例句，查找其他定义
+              for (const def of firstMeaning.definitions) {
+                if (def.example) {
+                  exampleSentence = def.example
+                  break
+                }
+              }
+            }
           }
         }
       }
@@ -1211,27 +1223,10 @@ const fetchWordInfo = async (word) => {
       console.log(`字典API请求失败 (${response.status}): ${word}`);
     }
 
-    // 如果没有找到英文释义，使用技术术语映射或单词本身
-    if (!englishDefinition) {
-      // 先尝试从技术术语映射中查找
-      if (techTermsMap[wordLower]) {
-        englishDefinition = word; // 用于翻译
-        exampleSentence = `Example: Set ${word} of an element`;
-      } else {
-        englishDefinition = word;
-      }
-    }
+    console.log(`准备翻译单词本身: "${word}"`);
 
-    console.log(`准备翻译英文释义: "${englishDefinition}"`);
-
-    // 使用免费翻译API获取中文释义
-    let chineseMeaning = await translate(englishDefinition);
-
-    // 如果翻译API返回的是原文（翻译失败），尝试使用技术术语映射
-    if (chineseMeaning === englishDefinition && techTermsMap[wordLower]) {
-      chineseMeaning = techTermsMap[wordLower];
-      console.log(`使用技术术语映射: ${word} -> ${chineseMeaning}`);
-    }
+    // 直接翻译单词本身，而不是英文解释
+    let chineseMeaning = await translate(word);
 
     console.log(`单词 ${word} 最终结果:`, {
       phonetic,
