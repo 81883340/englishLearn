@@ -37,22 +37,13 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   const userInputRef = useRef('')
   const currentWordRef = useRef(null)
 
-  // 同步 ref 和 state
+  // 同步 ref 和 state（合并为一个 effect 以提高性能）
   useEffect(() => {
     showResultRef.current = showResult
-  }, [showResult])
-
-  useEffect(() => {
     modeRef.current = mode
-  }, [mode])
-
-  useEffect(() => {
     userInputRef.current = userInput
-  }, [userInput])
-
-  useEffect(() => {
     currentWordRef.current = currentWord
-  }, [currentWord])
+  }, [showResult, mode, userInput, currentWord])
 
   const getRandomWord = (excludeId = null) => {
     const unlearned = wordLibrary.filter(w => !learnedWords.includes(w.id))
