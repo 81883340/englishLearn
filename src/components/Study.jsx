@@ -55,12 +55,6 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     }
   }, [wordLibrary, learnedWords, mode])
 
-  useEffect(() => {
-    if (userInput === currentWord?.word && mode === 'exam') {
-      handleCorrect()
-    }
-  }, [userInput, mode])
-
   const handleKeyPress = (key) => {
     if (showResult) return
 
@@ -80,9 +74,9 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setPressedKey(key)
     setTimeout(() => setPressedKey(null), 150)
 
-    // 如果显示结果中，只允许按回车跳过
+    // 如果显示结果中，按任意键（回车、空格或字母）跳转到下一个单词
     if (showResult) {
-      if (key === 'enter') {
+      if (key === 'enter' || key === ' ' || key.length === 1) {
         nextWord()
       }
       return
@@ -98,15 +92,16 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
       }
     }
 
-    // 考试模式：处理拼写输入
-    if (mode === 'exam') {
+    // 考试模式：处理拼写输入和提交
+    if (mode === 'exam' && !showResult) {
       if (key === 'backspace') {
         handleKeyPress('BACK')
       } else if (key === ' ') {
         e.preventDefault()
         handleKeyPress('SPACE')
       } else if (key === 'enter') {
-        nextWord()
+        // 回车键提交答案
+        checkAnswer()
       } else if (key.length === 1 && /[a-z]/.test(key)) {
         handleKeyPress(key)
       }
@@ -123,6 +118,38 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     nextWord()
   }
 
+  // 考试模式：检查答案
+  const checkAnswer = () => {
+    if (!currentWord || userInput.length === 0) return
+
+    if (userInput.toLowerCase() === currentWord.word.toLowerCase()) {
+      // 答对
+      setShowResult('correct')
+      const newStreak = progress.streak + 1
+      const newCorrect = progress.correctAnswers + 1
+
+      updateProgress({
+        totalLearned: progress.totalLearned + 1,
+        correctAnswers: newCorrect,
+        streak: newStreak
+      })
+
+      if (!learnedWords.includes(currentWord.id)) {
+        setLearnedWords([...learnedWords, currentWord.id])
+      }
+
+      triggerConfetti()
+    } else {
+      // 答错
+      setShowResult('wrong')
+      updateProgress({
+        wrongAnswers: progress.wrongAnswers + 1,
+        streak: 0
+      })
+    }
+  }
+
+  // 保持向后兼容
   const handleCorrect = () => {
     setShowResult('correct')
     const newStreak = progress.streak + 1
@@ -139,13 +166,6 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     }
 
     triggerConfetti()
-
-    // 考试模式下，答对后自动跳转到下一个单词
-    if (mode === 'exam') {
-      setTimeout(() => {
-        nextWord()
-      }, 1500)
-    }
   }
 
   const handleWrong = () => {
@@ -427,9 +447,18 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
               💡 {showHint ? '隐藏提示' : '显示提示'}
             </button>
           )}
-          {showResult && (
+          {showResult && mode === 'exam' && (
             <button className="btn btn-primary" onClick={nextWord}>
               下一个单词 →
+            </button>
+          )}
+          {!showResult && mode === 'exam' && (
+            <button
+              className="btn btn-primary"
+              onClick={checkAnswer}
+              disabled={userInput.length === 0}
+            >
+              检查答案 (Enter)
             </button>
           )}
           {!showResult && mode === 'exam' && (
