@@ -63,22 +63,49 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
   const handleImport = () => {
     const input = document.createElement('input')
     input.type = 'file'
-    input.accept = '.json'
+    input.accept = '.csv'
     input.onchange = (e) => {
       const file = e.target.files[0]
       const reader = new FileReader()
       reader.onload = (event) => {
+        const content = event.target.result
+
         try {
-          const imported = JSON.parse(event.target.result)
-          if (Array.isArray(imported)) {
-            const newWords = imported.map((w, index) => ({
-              id: Date.now() + index,
-              word: w.word?.trim().toLowerCase() || '',
-              meaning: w.meaning?.trim() || '',
-              example: w.example?.trim() || ''
-            })).filter(w => w.word && w.meaning)
+          let newWords = []
+
+          // CSV 格式: word,meaning,example
+          const lines = content.split('\n').filter(line => line.trim())
+          const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+
+          // 检测列顺序
+          const wordIndex = headers.findIndex(h => h.includes('word') || h === '单词')
+          const meaningIndex = headers.findIndex(h => h.includes('meaning') || h === '释义' || h === '意思')
+          const exampleIndex = headers.findIndex(h => h.includes('example') || h === '例句')
+
+          // 如果没有表头，默认顺序: word,meaning,example
+          const useDefault = wordIndex === -1 && meaningIndex === -1
+
+          for (let i = useDefault ? 0 : 1; i < lines.length; i++) {
+            const cols = lines[i].split(',').map(c => c.trim())
+            const word = useDefault ? cols[0] : cols[wordIndex]
+            const meaning = useDefault ? cols[1] : cols[meaningIndex]
+            const example = useDefault ? (cols[2] || '') : (exampleIndex >= 0 ? cols[exampleIndex] : '')
+
+            if (word && meaning) {
+              newWords.push({
+                id: Date.now() + i,
+                word: word.toLowerCase(),
+                meaning: meaning,
+                example: example
+              })
+            }
+          }
+
+          if (newWords.length > 0) {
             setWordLibrary([...wordLibrary, ...newWords])
             alert(`成功导入 ${newWords.length} 个单词`)
+          } else {
+            alert('导入失败: 文件中没有找到有效的单词')
           }
         } catch (error) {
           alert('导入失败: 文件格式错误')
@@ -90,12 +117,18 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
   }
 
   const handleExport = () => {
-    const dataStr = JSON.stringify(wordLibrary, null, 2)
-    const dataBlob = new Blob([dataStr], { type: 'application/json' })
+    // 导出 CSV 格式
+    const csvHeader = 'word,meaning,example\n'
+    const csvContent = wordLibrary.map(w =>
+      `"${w.word}","${w.meaning}","${w.example.replace(/"/g, '""')}"`
+    ).join('\n')
+    const csvData = csvHeader + csvContent
+
+    const dataBlob = new Blob(['\ufeff' + csvData], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(dataBlob)
     const link = document.createElement('a')
     link.href = url
-    link.download = 'word-library.json'
+    link.download = 'word-library.csv'
     link.click()
     URL.revokeObjectURL(url)
   }
@@ -132,10 +165,10 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
             {showAddForm ? '收起表单' : '+ 添加单词'}
           </button>
           <button className="btn btn-secondary" onClick={handleImport}>
-            📥 导入词库
+            📥 导入词库 (CSV)
           </button>
           <button className="btn btn-secondary" onClick={handleExport}>
-            📤 导出词库
+            📤 导出词库 (CSV)
           </button>
           <input
             type="text"
