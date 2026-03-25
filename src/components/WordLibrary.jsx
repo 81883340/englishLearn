@@ -1188,12 +1188,13 @@ const fetchWordInfo = async (word) => {
 
   try {
     // 使用 Free Dictionary API，包含翻译、音标、例句
-    // 正确的URL格式: https://freedictionaryapi.com/api/v1/entries/en/{word}
-    const response = await fetch(`https://freedictionaryapi.com/api/v1/entries/en/${word}`)
+    // 添加 translations=true 查询参数以获取翻译
+    const response = await fetch(`https://freedictionaryapi.com/api/v1/entries/en/${word}?translations=true`)
 
     if (response.ok) {
       console.log(`字典API请求成功: ${word}`);
       const data = await response.json()
+      console.log(`API完整响应:`, data)
 
       if (data && data.entries && data.entries.length > 0) {
         const entry = data.entries[0]
@@ -1229,22 +1230,27 @@ const fetchWordInfo = async (word) => {
             }
           }
 
-          // 获取中文翻译
+          // 获取中文翻译（从翻译字段中查找）
           let chineseTranslation = ''
+
+          // 1. 先在第一个含义的 translations 中查找
           if (firstSense.translations && firstSense.translations.length > 0) {
-            // 查找中文翻译
-            const zhTranslation = firstSense.translations.find(t => t.language && (t.language.code === 'zh' || t.language.name === 'Chinese'))
+            const zhTranslation = firstSense.translations.find(t =>
+              t.language && (t.language.code === 'zh' || t.language.name === 'Chinese' || t.language.name === '中文')
+            )
             if (zhTranslation) {
               chineseTranslation = zhTranslation.word
-              console.log(`找到中文翻译: "${chineseTranslation}"`)
+              console.log(`找到中文翻译(第一个含义): "${chineseTranslation}"`)
             }
           }
 
-          // 如果第一个含义没有中文翻译，查找其他含义
+          // 2. 如果第一个含义没有中文翻译，查找其他含义
           if (!chineseTranslation) {
             for (const sense of entry.senses) {
               if (sense.translations && sense.translations.length > 0) {
-                const zhTranslation = sense.translations.find(t => t.language && (t.language.code === 'zh' || t.language.name === 'Chinese'))
+                const zhTranslation = sense.translations.find(t =>
+                  t.language && (t.language.code === 'zh' || t.language.name === 'Chinese' || t.language.name === '中文')
+                )
                 if (zhTranslation) {
                   chineseTranslation = zhTranslation.word
                   console.log(`在其他含义中找到中文翻译: "${chineseTranslation}"`)
