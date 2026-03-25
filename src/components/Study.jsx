@@ -474,7 +474,18 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
             </button>
           )}
           {mode === 'exam' && !hasCheckedAnswer && (
-            <button className="btn btn-primary" onClick={submitAnswer} disabled={userInput.length === 0}>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              onClick={() => submitAnswer()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  submitAnswer()
+                }
+              }}
+              disabled={userInput.length === 0}
+            >
               检查答案 (Enter)
             </button>
           )}
