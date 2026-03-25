@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react'
 const techTermsMap = {
   'font': '字体',
   'size': '大小',
-  'fontsize': '字体大小',
   'color': '颜色',
   'background': '背景',
   'width': '宽度',
@@ -1215,50 +1214,29 @@ const fetchWordInfo = async (word) => {
           const firstSense = entry.senses[0]
           englishDefinition = firstSense.definition || ''
 
-          // 获取例句
-          if (firstSense.examples && firstSense.examples.length > 0) {
-            exampleSentence = firstSense.examples[0]
-            console.log(`找到例句: "${exampleSentence}"`)
-          } else {
-            // 如果第一个含义没有例句，查找其他含义
-            for (const sense of entry.senses) {
-              if (sense.examples && sense.examples.length > 0) {
-                exampleSentence = sense.examples[0]
-                console.log(`在其他含义中找到例句: "${exampleSentence}"`)
+          // 获取例句 - 在所有含义中查找
+          for (const sense of entry.senses) {
+            if (sense.examples && sense.examples.length > 0) {
+              exampleSentence = sense.examples[0]
+              console.log(`找到例句: "${exampleSentence}"`)
+              break
+            }
+          }
+
+          // 获取中文翻译 - 在所有含义的 translations 中查找
+          let chineseTranslation = ''
+          for (const sense of entry.senses) {
+            if (sense.translations && sense.translations.length > 0) {
+              const zhTranslation = sense.translations.find(t =>
+                t.language && (t.language.code === 'zh' || t.language.name === 'Chinese' || t.language.name === '中文' || t.language.name.toLowerCase().includes('chinese'))
+              )
+              if (zhTranslation) {
+                chineseTranslation = zhTranslation.word
+                console.log(`找到中文翻译: "${chineseTranslation}"`)
                 break
               }
             }
-          }
-
-          // 获取中文翻译（从翻译字段中查找）
-          let chineseTranslation = ''
-
-          // 1. 先在第一个含义的 translations 中查找
-          if (firstSense.translations && firstSense.translations.length > 0) {
-            const zhTranslation = firstSense.translations.find(t =>
-              t.language && (t.language.code === 'zh' || t.language.name === 'Chinese' || t.language.name === '中文')
-            )
-            if (zhTranslation) {
-              chineseTranslation = zhTranslation.word
-              console.log(`找到中文翻译(第一个含义): "${chineseTranslation}"`)
-            }
-          }
-
-          // 2. 如果第一个含义没有中文翻译，查找其他含义
-          if (!chineseTranslation) {
-            for (const sense of entry.senses) {
-              if (sense.translations && sense.translations.length > 0) {
-                const zhTranslation = sense.translations.find(t =>
-                  t.language && (t.language.code === 'zh' || t.language.name === 'Chinese' || t.language.name === '中文')
-                )
-                if (zhTranslation) {
-                  chineseTranslation = zhTranslation.word
-                  console.log(`在其他含义中找到中文翻译: "${chineseTranslation}"`)
-                  break
-                }
-              }
-              if (chineseTranslation) break
-            }
+            if (chineseTranslation) break
           }
 
           console.log(`字典API返回 - 音标: "${phonetic}", 英文释义: "${englishDefinition.substring(0, 50)}...", 中文: "${chineseTranslation}", 例句: "${exampleSentence || '无'}"`)
