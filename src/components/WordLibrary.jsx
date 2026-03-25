@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 const techTermsMap = {
   'font': '字体',
   'size': '大小',
+  'fontsize': '字体大小',
   'color': '颜色',
   'background': '背景',
   'width': '宽度',
@@ -1193,7 +1194,7 @@ const fetchWordInfo = async (word) => {
     if (response.ok) {
       console.log(`字典API请求成功: ${word}`);
       const data = await response.json()
-      console.log(`API完整响应:`, data)
+      console.log(`API完整响应:`, JSON.stringify(data, null, 2))
 
       if (data && data.entries && data.entries.length > 0) {
         const entry = data.entries[0]
@@ -1213,13 +1214,38 @@ const fetchWordInfo = async (word) => {
         if (entry.senses && entry.senses.length > 0) {
           const firstSense = entry.senses[0]
           englishDefinition = firstSense.definition || ''
+          
+          console.log(`第一个含义数据:`, {
+            hasExamples: firstSense.examples && firstSense.examples.length > 0,
+            hasQuotes: firstSense.quotes && firstSense.quotes.length > 0,
+            hasTranslations: firstSense.translations && firstSense.translations.length > 0,
+            examples: firstSense.examples,
+            quotes: firstSense.quotes,
+            translations: firstSense.translations
+          })
 
-          // 获取例句 - 在所有含义中查找
-          for (const sense of entry.senses) {
-            if (sense.examples && sense.examples.length > 0) {
-              exampleSentence = sense.examples[0]
-              console.log(`找到例句: "${exampleSentence}"`)
-              break
+          // 获取例句 - 优先从 examples 数组查找，如果没有则从 quotes 数组查找
+          if (firstSense.examples && firstSense.examples.length > 0) {
+            exampleSentence = firstSense.examples[0]
+            console.log(`找到例句 (examples): "${exampleSentence}"`)
+          } else if (firstSense.quotes && firstSense.quotes.length > 0) {
+            exampleSentence = firstSense.quotes[0].text
+            console.log(`找到例句 (quotes): "${exampleSentence}"`)
+          }
+
+          // 如果第一个含义没有例句，查找其他含义
+          if (!exampleSentence) {
+            console.log(`第一个含义没有例句，在其他含义中查找...`)
+            for (const sense of entry.senses) {
+              if (sense.examples && sense.examples.length > 0) {
+                exampleSentence = sense.examples[0]
+                console.log(`在其他含义中找到例句 (examples): "${exampleSentence}"`)
+                break
+              } else if (sense.quotes && sense.quotes.length > 0) {
+                exampleSentence = sense.quotes[0].text
+                console.log(`在其他含义中找到例句 (quotes): "${exampleSentence}"`)
+                break
+              }
             }
           }
 
