@@ -104,6 +104,52 @@ function App() {
     })
   }
 
+  const handleBackupProgress = () => {
+    const backupData = {
+      progress,
+      learnedWords,
+      wordLibrary,
+      backupDate: new Date().toISOString()
+    }
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `english-learning-backup-${new Date().toISOString().split('T')[0]}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+    toast.success('备份成功！')
+  }
+
+  const handleRestoreProgress = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.json'
+    input.onchange = (e) => {
+      const file = e.target.files[0]
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        try {
+          const data = JSON.parse(event.target.result)
+          if (data.progress && data.learnedWords && data.wordLibrary) {
+            if (confirm(`确定要恢复 ${data.backupDate ? new Date(data.backupDate).toLocaleDateString() : ''} 的备份吗？当前数据将被覆盖。`)) {
+              setProgress(data.progress)
+              setLearnedWords(data.learnedWords)
+              setWordLibrary(data.wordLibrary)
+              toast.success('恢复成功！')
+            }
+          } else {
+            toast.error('备份文件格式错误')
+          }
+        } catch (error) {
+          toast.error('备份文件格式错误')
+        }
+      }
+      reader.readAsText(file)
+    }
+    input.click()
+  }
+
   const renderPage = () => {
     switch (currentPage) {
       case 'home':
@@ -112,6 +158,8 @@ function App() {
             progress={progress}
             wordLibrary={wordLibrary}
             setCurrentPage={setCurrentPage}
+            handleBackupProgress={handleBackupProgress}
+            handleRestoreProgress={handleRestoreProgress}
           />
         )
       case 'study':
@@ -147,6 +195,8 @@ function App() {
             progress={progress}
             wordLibrary={wordLibrary}
             setCurrentPage={setCurrentPage}
+            handleBackupProgress={handleBackupProgress}
+            handleRestoreProgress={handleRestoreProgress}
           />
         )
     }

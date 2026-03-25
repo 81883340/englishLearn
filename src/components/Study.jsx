@@ -113,6 +113,13 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     }
 
     triggerConfetti()
+
+    // 考试模式下，答对后自动跳转到下一个单词
+    if (mode === 'exam') {
+      setTimeout(() => {
+        nextWord()
+      }, 1500)
+    }
   }
 
   const handleWrong = () => {
@@ -289,9 +296,11 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
                       fontSize: '24px',
                       fontWeight: '700',
                       color: userInput[index]
-                        ? userInput[index] === currentWord.word[index]
+                        ? showResult === 'correct'
                           ? '#10b981'
-                          : '#ef4444'
+                          : showResult === 'wrong'
+                            ? '#ef4444'
+                            : 'var(--dark)'
                         : 'var(--gray)'
                     }}
                   >
@@ -409,11 +418,12 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         )}
       </div>
 
-      <div className="card" style={{
-        maxWidth: '700px',
-        margin: '0 auto',
-        padding: '30px'
-      }}>
+      {mode === 'exam' && (
+        <div className="card" style={{
+          maxWidth: '700px',
+          margin: '0 auto',
+          padding: '30px'
+        }}>
         <h3 style={{
           textAlign: 'center',
           marginBottom: '20px',
@@ -502,6 +512,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }
