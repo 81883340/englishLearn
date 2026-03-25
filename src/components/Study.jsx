@@ -30,13 +30,13 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   const [showResult, setShowResult] = useState(null) // 'correct' | 'wrong' | null
   const [showHint, setShowHint] = useState(false)
   const [pressedKey, setPressedKey] = useState(null)
-  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [hasCheckedAnswer, setHasCheckedAnswer] = useState(false)
 
   // 使用 ref 来避免闭包问题
-  const isSubmittedRef = useRef(isSubmitted)
+  const hasCheckedAnswerRef = useRef(hasCheckedAnswer)
   useEffect(() => {
-    isSubmittedRef.current = isSubmitted
-  }, [isSubmitted])
+    hasCheckedAnswerRef.current = hasCheckedAnswer
+  }, [hasCheckedAnswer])
 
   const getRandomWord = useCallback((excludeId = null) => {
     const unlearned = wordLibrary.filter(w => !learnedWords.includes(w.id))
@@ -69,12 +69,12 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setUserInput('')
     setShowResult(null)
     setShowHint(false)
-    setIsSubmitted(false)
+    setHasCheckedAnswer(false)
   }, [currentWord, getRandomWord])
 
   // 虚拟键盘按键处理（未提交状态）
   const handleKeyPress = useCallback((key) => {
-    if (isSubmittedRef.current) return
+    if (hasCheckedAnswerRef.current) return
 
     if (key === 'BACK') {
       setUserInput(prev => prev.slice(0, -1))
@@ -93,10 +93,10 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setPressedKey(key)
     setTimeout(() => setPressedKey(null), 150)
 
-    const submitted = isSubmittedRef.current
+    const checked = hasCheckedAnswerRef.current
 
-    // 考试模式 - 已提交状态
-    if (mode === 'exam' && submitted) {
+    // 考试模式 - 已检查答案状态
+    if (mode === 'exam' && checked) {
       // 按空格键切换到下一个单词
       if (key === ' ') {
         resetToNextWord()
@@ -115,13 +115,13 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         setUserInput('')
         setShowResult(null)
         setShowHint(false)
-        setIsSubmitted(false)
+        setHasCheckedAnswer(false)
         return
       }
     }
 
-    // 考试模式 - 未提交状态
-    if (mode === 'exam' && !submitted) {
+    // 考试模式 - 未检查答案状态
+    if (mode === 'exam' && !checked) {
       if (key === 'backspace') {
         handleKeyPress('BACK')
       } else if (key === ' ') {
@@ -148,7 +148,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setUserInput('')
     setShowResult(null)
     setShowHint(false)
-    setIsSubmitted(false)
+    setHasCheckedAnswer(false)
     if (mode === 'exam') {
       // 从考试切换到学习，重置到第一个单词
       setCurrentWordIndex(0)
@@ -162,8 +162,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   const submitAnswer = useCallback(() => {
     if (!currentWord || userInput.length === 0) return
 
-    setIsSubmitted(true)
-    setShowResult(null)
+    setHasCheckedAnswer(true)
 
     if (userInput.toLowerCase() === currentWord.word.toLowerCase()) {
       // 答对
@@ -193,7 +192,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   }, [currentWord, userInput, progress, learnedWords, updateProgress, setLearnedWords])
 
   const handleWrong = useCallback(() => {
-    setIsSubmitted(true)
+    setHasCheckedAnswer(true)
     setShowResult('wrong')
     updateProgress({
       wrongAnswers: progress.wrongAnswers + 1,
@@ -205,7 +204,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setUserInput('')
     setShowResult(null)
     setShowHint(false)
-    setIsSubmitted(false)
+    setHasCheckedAnswer(false)
 
     if (mode === 'learn') {
       const newIndex = (currentWordIndex + 1) % wordLibrary.length
@@ -220,7 +219,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setUserInput('')
     setShowResult(null)
     setShowHint(false)
-    setIsSubmitted(false)
+    setHasCheckedAnswer(false)
 
     if (mode === 'learn') {
       const newIndex = (currentWordIndex - 1 + wordLibrary.length) % wordLibrary.length
@@ -477,13 +476,13 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
           {mode === 'exam' && (
             <button
               className="btn btn-primary"
-              onClick={isSubmitted ? nextWord : submitAnswer}
-              disabled={isSubmitted ? false : userInput.length === 0}
+              onClick={hasCheckedAnswer ? nextWord : submitAnswer}
+              disabled={hasCheckedAnswer ? false : userInput.length === 0}
             >
-              {isSubmitted ? '下一个单词 (Space)' : '检查答案 (Enter)'}
+              {hasCheckedAnswer ? '下一个单词 (Space)' : '检查答案 (Enter)'}
             </button>
           )}
-          {mode === 'exam' && !isSubmitted && (
+          {mode === 'exam' && !hasCheckedAnswer && (
             <button className="btn btn-danger" onClick={handleWrong}>
               显示答案
             </button>
@@ -559,11 +558,11 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
                     fontWeight: '600',
                     background: getKeyColor(key),
                     color: getKeyColor(key) === '#e5e7eb' ? 'var(--dark)' : 'white',
-                    cursor: isSubmitted ? 'not-allowed' : 'pointer',
+                    cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
                     transition: 'all 0.2s ease',
                     boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
                   }}
-                  disabled={isSubmitted}
+                  disabled={hasCheckedAnswer}
                   onMouseDown={(e) => e.target.style.transform = 'scale(0.95)'}
                   onMouseUp={(e) => e.target.style.transform = 'scale(1)'}
                   onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
@@ -586,11 +585,11 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
                 fontWeight: '600',
                 background: '#e5e7eb',
                 color: 'var(--dark)',
-                cursor: isSubmitted ? 'not-allowed' : 'pointer',
+                cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s ease',
                 boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
               }}
-              disabled={isSubmitted}
+              disabled={hasCheckedAnswer}
             >
               ← Back
             </button>
@@ -605,11 +604,11 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
                 fontWeight: '600',
                 background: '#e5e7eb',
                 color: 'var(--dark)',
-                cursor: isSubmitted ? 'not-allowed' : 'pointer',
+                cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s ease',
                 boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
               }}
-              disabled={isSubmitted}
+              disabled={hasCheckedAnswer}
             >
               Space
             </button>
