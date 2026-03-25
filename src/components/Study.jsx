@@ -97,8 +97,8 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
 
     // 考试模式 - 已提交状态
     if (mode === 'exam' && submitted) {
-      // 按任意键继续到下一个单词
-      if (key.length === 1 || key === 'enter' || key === ' ') {
+      // 按空格键切换到下一个单词
+      if (key === ' ') {
         resetToNextWord()
       }
       return
@@ -478,21 +478,16 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
               💡 {showHint ? '隐藏提示' : '显示提示'}
             </button>
           )}
-          {isSubmitted && mode === 'exam' && (
-            <button className="btn btn-primary" onClick={nextWord}>
-              下一个单词 →
-            </button>
-          )}
-          {!isSubmitted && mode === 'exam' && (
+          {mode === 'exam' && (
             <button
               className="btn btn-primary"
-              onClick={submitAnswer}
-              disabled={userInput.length === 0}
+              onClick={isSubmitted ? nextWord : submitAnswer}
+              disabled={isSubmitted ? false : userInput.length === 0}
             >
-              检查答案 (Enter)
+              {isSubmitted ? '下一个单词 (Space)' : '检查答案 (Enter)'}
             </button>
           )}
-          {!isSubmitted && mode === 'exam' && (
+          {mode === 'exam' && !isSubmitted && (
             <button className="btn btn-danger" onClick={handleWrong}>
               显示答案
             </button>
