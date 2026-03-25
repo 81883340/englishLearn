@@ -316,16 +316,30 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
 
         <div style={{ marginBottom: '40px' }}>
           {mode === 'learn' ? (
-            // 学习模式：显示单词、释义、例句
+            // 学习模式：显示单词、音标、释义、例句
             <>
-              <h1 style={{
-                fontSize: '48px',
-                fontWeight: '800',
-                color: 'var(--dark)',
-                marginBottom: '20px'
-              }}>
-                {currentWord.word}
-              </h1>
+              <div style={{ marginBottom: '24px' }}>
+                <h1 style={{
+                  fontSize: '56px',
+                  fontWeight: '800',
+                  color: 'var(--dark)',
+                  marginBottom: '12px',
+                  lineHeight: '1.2'
+                }}>
+                  {currentWord.word}
+                </h1>
+                {currentWord.phonetic && (
+                  <p style={{
+                    fontSize: '20px',
+                    color: 'var(--gray)',
+                    fontFamily: 'Arial, sans-serif',
+                    fontWeight: '400',
+                    marginBottom: '16px'
+                  }}>
+                    📢 {currentWord.phonetic}
+                  </p>
+                )}
+              </div>
               <p style={{
                 fontSize: '24px',
                 color: 'var(--primary)',
@@ -343,7 +357,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
               </p>
             </>
           ) : (
-            // 考试模式：只显示释义，隐藏单词和例句
+            // 考试模式：只显示释义、音标，隐藏单词和例句
             <>
               <div style={{
                 fontSize: '24px',
@@ -353,6 +367,17 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
               }}>
                 {currentWord.meaning}
               </div>
+              {currentWord.phonetic && (
+                <div style={{
+                  fontSize: '18px',
+                  color: 'var(--gray)',
+                  fontFamily: 'Arial, sans-serif',
+                  fontWeight: '400',
+                  marginBottom: '12px'
+                }}>
+                  📢 {currentWord.phonetic}
+                </div>
+              )}
               <div style={{
                 fontSize: '14px',
                 color: 'var(--gray)',
@@ -451,6 +476,15 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
             }}>
               正确答案是: {currentWord.word}
             </p>
+            {currentWord.phonetic && (
+              <p style={{
+                fontSize: '16px',
+                color: 'var(--gray)',
+                fontWeight: '500'
+              }}>
+                音标: {currentWord.phonetic}
+              </p>
+            )}
           </div>
         )}
 

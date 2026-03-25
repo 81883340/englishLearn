@@ -1382,9 +1382,9 @@ const getChineseMeaning = async (word) => {
 }
 
 function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
-  const [newWord, setNewWord] = useState({ word: '', meaning: '', example: '' })
+  const [newWord, setNewWord] = useState({ word: '', meaning: '', example: '', phonetic: '' })
   const [editingId, setEditingId] = useState(null)
-  const [editingWord, setEditingWord] = useState({ word: '', meaning: '', example: '' })
+  const [editingWord, setEditingWord] = useState({ word: '', meaning: '', example: '', phonetic: '' })
   const [searchTerm, setSearchTerm] = useState('')
   const [showAddForm, setShowAddForm] = useState(false)
   const [isAutoFetching, setIsAutoFetching] = useState(false)
@@ -1399,7 +1399,8 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
         setNewWord({
           word: wordInfo.word,
           meaning: wordInfo.chineseMeaning || wordInfo.englishDefinition,
-          example: wordInfo.example
+          example: wordInfo.example,
+          phonetic: wordInfo.phonetic
         })
         return true
       } else {
@@ -1432,7 +1433,8 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
             id: Date.now() + i,
             word: wordInfo.word,
             meaning: wordInfo.chineseMeaning || wordInfo.englishDefinition,
-            example: wordInfo.example
+            example: wordInfo.example,
+            phonetic: wordInfo.phonetic
           })
         }
       } catch (error) {
@@ -1492,11 +1494,12 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
       id: Date.now(),
       word: newWord.word.trim().toLowerCase(),
       meaning: newWord.meaning.trim(),
-      example: newWord.example.trim() || `${newWord.word} - example sentence`
+      example: newWord.example.trim() || `${newWord.word} - example sentence`,
+      phonetic: newWord.phonetic || ''
     }
 
     setWordLibrary([...wordLibrary, word])
-    setNewWord({ word: '', meaning: '', example: '' })
+    setNewWord({ word: '', meaning: '', example: '', phonetic: '' })
     setShowAddForm(false)
   }
 
@@ -1512,12 +1515,13 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
             ...w,
             word: editingWord.word.trim().toLowerCase(),
             meaning: editingWord.meaning.trim(),
-            example: editingWord.example.trim()
+            example: editingWord.example.trim(),
+            phonetic: editingWord.phonetic || ''
           }
         : w
     ))
     setEditingId(null)
-    setEditingWord({ word: '', meaning: '', example: '' })
+    setEditingWord({ word: '', meaning: '', example: '', phonetic: '' })
   }
 
   const handleDeleteWord = (id) => {
@@ -1531,7 +1535,8 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
     setEditingWord({
       word: word.word,
       meaning: word.meaning,
-      example: word.example
+      example: word.example,
+      phonetic: word.phonetic || ''
     })
   }
 
@@ -1556,6 +1561,7 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
           const wordIndex = headers.findIndex(h => h.includes('word') || h === '单词')
           const meaningIndex = headers.findIndex(h => h.includes('meaning') || h === '释义' || h === '意思')
           const exampleIndex = headers.findIndex(h => h.includes('example') || h === '例句')
+          const phoneticIndex = headers.findIndex(h => h.includes('phonetic') || h === '音标')
 
           // 如果没有表头，默认顺序: word,meaning,example
           const useDefault = wordIndex === -1 && meaningIndex === -1
@@ -1565,13 +1571,15 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
             const word = useDefault ? cols[0] : cols[wordIndex]
             const meaning = useDefault ? cols[1] : cols[meaningIndex]
             const example = useDefault ? (cols[2] || '') : (exampleIndex >= 0 ? cols[exampleIndex] : '')
+            const phonetic = useDefault ? (cols[3] || '') : (phoneticIndex >= 0 ? cols[phoneticIndex] : '')
 
             if (word && meaning) {
               newWords.push({
                 id: Date.now() + i,
                 word: word.toLowerCase(),
                 meaning: meaning,
-                example: example
+                example: example,
+                phonetic: phonetic
               })
             }
           }
@@ -1592,10 +1600,10 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
   }
 
   const handleExport = () => {
-    // 导出 CSV 格式
-    const csvHeader = 'word,meaning,example\n'
+    // 导出 CSV 格式（包含音标）
+    const csvHeader = 'word,meaning,example,phonetic\n'
     const csvContent = wordLibrary.map(w =>
-      `"${w.word}","${w.meaning}","${w.example.replace(/"/g, '""')}"`
+      `"${w.word}","${w.meaning}","${w.example.replace(/"/g, '""')}","${(w.phonetic || '').replace(/"/g, '""')}"`
     ).join('\n')
     const csvData = csvHeader + csvContent
 
@@ -1754,6 +1762,40 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
                   fontWeight: '500',
                   color: 'var(--dark)'
                 }}>
+                  音标
+                </label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="例如: /həˈloʊ/"
+                  value={newWord.phonetic}
+                  onChange={(e) => setNewWord({ ...newWord, phonetic: e.target.value })}
+                />
+              </div>
+              <div>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: '500',
+                  color: 'var(--dark)'
+                }}>
+                  释义 *
+                </label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="例如: 你好"
+                  value={newWord.meaning}
+                  onChange={(e) => setNewWord({ ...newWord, meaning: e.target.value })}
+                />
+              </div>
+              <div>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: '500',
+                  color: 'var(--dark)'
+                }}>
                   例句
                 </label>
                 <input
@@ -1772,7 +1814,7 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
                   className="btn btn-secondary"
                   onClick={() => {
                     setShowAddForm(false)
-                    setNewWord({ word: '', meaning: '', example: '' })
+                    setNewWord({ word: '', meaning: '', example: '', phonetic: '' })
                   }}
                 >
                   取消
@@ -1797,6 +1839,9 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
               }}>
                 <th style={{ padding: '16px', fontWeight: '700', color: 'var(--dark)', minWidth: '120px' }}>
                   单词
+                </th>
+                <th style={{ padding: '16px', fontWeight: '700', color: 'var(--dark)', minWidth: '100px' }}>
+                  音标
                 </th>
                 <th style={{ padding: '16px', fontWeight: '700', color: 'var(--dark)', minWidth: '150px' }}>
                   释义
@@ -1840,6 +1885,16 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
                         <input
                           type="text"
                           className="input"
+                          value={editingWord.phonetic}
+                          onChange={(e) => setEditingWord({ ...editingWord, phonetic: e.target.value })}
+                          placeholder="音标"
+                          style={{ width: '100%', fontSize: '14px' }}
+                        />
+                      </td>
+                      <td style={{ padding: '16px' }}>
+                        <input
+                          type="text"
+                          className="input"
                           value={editingWord.meaning}
                           onChange={(e) => setEditingWord({ ...editingWord, meaning: e.target.value })}
                           placeholder="释义"
@@ -1870,7 +1925,7 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
                             style={{ padding: '6px 12px', fontSize: '12px' }}
                             onClick={() => {
                               setEditingId(null)
-                              setEditingWord({ word: '', meaning: '', example: '' })
+                              setEditingWord({ word: '', meaning: '', example: '', phonetic: '' })
                             }}
                           >
                             取消
@@ -1888,6 +1943,9 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
                         }}>
                           {word.word}
                         </span>
+                      </td>
+                      <td style={{ padding: '16px', color: 'var(--gray)', fontFamily: 'Arial, sans-serif' }}>
+                        {word.phonetic || '-'}
                       </td>
                       <td style={{ padding: '16px', color: 'var(--dark)', fontWeight: '500' }}>
                         {word.meaning}
