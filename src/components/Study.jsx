@@ -31,9 +31,15 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   const [showHint, setShowHint] = useState(false)
   const [pressedKey, setPressedKey] = useState(null)
 
-  const getRandomWord = () => {
+  const getRandomWord = (excludeId = null) => {
     const unlearned = wordLibrary.filter(w => !learnedWords.includes(w.id))
-    const pool = unlearned.length > 0 ? unlearned : wordLibrary
+    let pool = unlearned.length > 0 ? unlearned : wordLibrary
+
+    // 如果需要排除当前单词
+    if (excludeId && pool.length > 1) {
+      pool = pool.filter(w => w.id !== excludeId)
+    }
+
     const randomIndex = Math.floor(Math.random() * pool.length)
     return pool[randomIndex]
   }
@@ -74,21 +80,22 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setPressedKey(key)
     setTimeout(() => setPressedKey(null), 150)
 
+    // 如果显示结果中，只允许按回车跳过
+    if (showResult) {
+      if (key === 'enter') {
+        nextWord()
+      }
+      return
+    }
+
     // 学习模式：按任意键切换到下一个单词（排除特殊键）
-    if (mode === 'learn' && !showResult) {
+    if (mode === 'learn') {
       if (!e.ctrlKey && !e.altKey && !e.metaKey &&
           key !== 'control' && key !== 'alt' && key !== 'meta' &&
           key !== 'backspace' && key !== 'tab' && key !== 'escape') {
         nextWord()
         return
       }
-    }
-
-    if (showResult) {
-      if (key === 'enter') {
-        nextWord()
-      }
-      return
     }
 
     // 考试模式：处理拼写输入
@@ -159,7 +166,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
       setCurrentWordIndex(newIndex)
       setCurrentWord(wordLibrary[newIndex])
     } else {
-      setCurrentWord(getRandomWord())
+      setCurrentWord(getRandomWord(currentWord?.id))
     }
   }
 
@@ -289,7 +296,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
               </p>
             </>
           ) : (
-            // 考试模式：只显示释义和例句，隐藏单词
+            // 考试模式：只显示释义，隐藏单词和例句
             <>
               <div style={{
                 fontSize: '24px',
@@ -299,14 +306,6 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
               }}>
                 {currentWord.meaning}
               </div>
-              <p style={{
-                fontSize: '18px',
-                color: 'var(--gray)',
-                fontStyle: 'italic',
-                marginBottom: '20px'
-              }}>
-                "{currentWord.example}"
-              </p>
               <div style={{
                 fontSize: '14px',
                 color: 'var(--gray)',
@@ -420,12 +419,14 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
               ← 上一个
             </button>
           )}
-          <button
-            className="btn btn-secondary"
-            onClick={() => setShowHint(!showHint)}
-          >
-            💡 {showHint ? '隐藏提示' : '显示提示'}
-          </button>
+          {mode === 'exam' && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowHint(!showHint)}
+            >
+              💡 {showHint ? '隐藏提示' : '显示提示'}
+            </button>
+          )}
           {showResult && (
             <button className="btn btn-primary" onClick={nextWord}>
               下一个单词 →
@@ -460,8 +461,11 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
             borderRadius: '12px',
             marginBottom: '20px'
           }}>
-            <p style={{ color: 'var(--primary)', fontWeight: '500' }}>
+            <p style={{ color: 'var(--primary)', fontWeight: '500', marginBottom: '8px' }}>
               单词长度: {currentWord.word.length} 个字母
+            </p>
+            <p style={{ color: 'var(--gray)', fontSize: '14px', fontStyle: 'italic' }}>
+              例句: "{currentWord.example}"
             </p>
           </div>
         )}

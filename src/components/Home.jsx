@@ -70,30 +70,35 @@ function Home({ progress, wordLibrary, setCurrentPage, handleBackupProgress, han
           onClick={() => setCurrentPage('study')}
           style={{
             width: '100%',
-            padding: '24px 40px',
-            fontSize: '20px',
+            padding: '28px 40px',
+            fontSize: '22px',
             fontWeight: '700',
-            borderRadius: '16px',
-            boxShadow: '0 8px 30px rgba(99, 102, 241, 0.4)',
+            borderRadius: '20px',
+            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+            border: '3px solid #fbbf24',
+            boxShadow: '0 10px 40px rgba(245, 158, 11, 0.5)',
             transition: 'all 0.3s ease',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '16px'
+            gap: '16px',
+            color: 'white'
           }}
           onMouseEnter={(e) => {
-            e.target.style.transform = 'translateY(-4px)'
-            e.target.style.boxShadow = '0 12px 40px rgba(99, 102, 241, 0.5)'
+            e.target.style.transform = 'translateY(-6px)'
+            e.target.style.boxShadow = '0 15px 50px rgba(245, 158, 11, 0.6)'
+            e.target.style.background = 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)'
           }}
           onMouseLeave={(e) => {
             e.target.style.transform = 'translateY(0)'
-            e.target.style.boxShadow = '0 8px 30px rgba(99, 102, 241, 0.4)'
+            e.target.style.boxShadow = '0 10px 40px rgba(245, 158, 11, 0.5)'
+            e.target.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
           }}
         >
-          <span style={{ fontSize: '36px' }}>🚀</span>
+          <span style={{ fontSize: '40px', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}>🚀</span>
           <div style={{ textAlign: 'left' }}>
-            <div>开始学习</div>
-            <div style={{ fontSize: '14px', fontWeight: '500', opacity: 0.9 }}>
+            <div style={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>开始学习</div>
+            <div style={{ fontSize: '14px', fontWeight: '500', opacity: 0.95, textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>
               使用虚拟键盘提升拼写能力
             </div>
           </div>
