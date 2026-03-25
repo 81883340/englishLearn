@@ -1188,7 +1188,8 @@ const fetchWordInfo = async (word) => {
 
   try {
     // 使用 Free Dictionary API，包含翻译、音标、例句
-    const response = await fetch(`https://api.freedictionaryapi.com/api/v1/entries/en/${word}?translations=true`)
+    // 正确的URL格式: https://freedictionaryapi.com/api/v1/entries/en/{word}
+    const response = await fetch(`https://freedictionaryapi.com/api/v1/entries/en/${word}`)
 
     if (response.ok) {
       console.log(`字典API请求成功: ${word}`);
@@ -1232,7 +1233,7 @@ const fetchWordInfo = async (word) => {
           let chineseTranslation = ''
           if (firstSense.translations && firstSense.translations.length > 0) {
             // 查找中文翻译
-            const zhTranslation = firstSense.translations.find(t => t.language.code === 'zh' || t.language.name === 'Chinese')
+            const zhTranslation = firstSense.translations.find(t => t.language && (t.language.code === 'zh' || t.language.name === 'Chinese'))
             if (zhTranslation) {
               chineseTranslation = zhTranslation.word
               console.log(`找到中文翻译: "${chineseTranslation}"`)
@@ -1243,7 +1244,7 @@ const fetchWordInfo = async (word) => {
           if (!chineseTranslation) {
             for (const sense of entry.senses) {
               if (sense.translations && sense.translations.length > 0) {
-                const zhTranslation = sense.translations.find(t => t.language.code === 'zh' || t.language.name === 'Chinese')
+                const zhTranslation = sense.translations.find(t => t.language && (t.language.code === 'zh' || t.language.name === 'Chinese'))
                 if (zhTranslation) {
                   chineseTranslation = zhTranslation.word
                   console.log(`在其他含义中找到中文翻译: "${chineseTranslation}"`)
