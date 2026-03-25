@@ -85,6 +85,39 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     }
   }, [])
 
+  // 提交答案
+  const submitAnswer = useCallback(() => {
+    if (!currentWord || userInput.length === 0) return
+
+    setHasCheckedAnswer(true)
+
+    if (userInput.toLowerCase() === currentWord.word.toLowerCase()) {
+      // 答对
+      setShowResult('correct')
+      const newStreak = progress.streak + 1
+      const newCorrect = progress.correctAnswers + 1
+
+      updateProgress({
+        totalLearned: progress.totalLearned + 1,
+        correctAnswers: newCorrect,
+        streak: newStreak
+      })
+
+      if (!learnedWords.includes(currentWord.id)) {
+        setLearnedWords([...learnedWords, currentWord.id])
+      }
+
+      triggerConfetti()
+    } else {
+      // 答错
+      setShowResult('wrong')
+      updateProgress({
+        wrongAnswers: progress.wrongAnswers + 1,
+        streak: 0
+      })
+    }
+  }, [currentWord, userInput, progress, learnedWords, updateProgress, setLearnedWords])
+
   // 物理键盘处理 - 使用 useCallback 避免频繁重建
   const handlePhysicalKeyboard = useCallback((e) => {
     const key = e.key.toLowerCase()
@@ -136,60 +169,6 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
       }
     }
   }, [mode, currentWordIndex, wordLibrary, handleKeyPress, resetToNextWord, submitAnswer])
-
-  useEffect(() => {
-    window.addEventListener('keydown', handlePhysicalKeyboard)
-    return () => window.removeEventListener('keydown', handlePhysicalKeyboard)
-  }, [handlePhysicalKeyboard])
-
-  const toggleMode = () => {
-    setMode(prev => prev === 'learn' ? 'exam' : 'learn')
-    // 切换模式后重置状态
-    setUserInput('')
-    setShowResult(null)
-    setShowHint(false)
-    setHasCheckedAnswer(false)
-    if (mode === 'exam') {
-      // 从考试切换到学习，重置到第一个单词
-      setCurrentWordIndex(0)
-      setCurrentWord(wordLibrary[0])
-    } else {
-      // 从学习切换到考试，选择随机单词
-      setCurrentWord(getRandomWord())
-    }
-  }
-
-  const submitAnswer = useCallback(() => {
-    if (!currentWord || userInput.length === 0) return
-
-    setHasCheckedAnswer(true)
-
-    if (userInput.toLowerCase() === currentWord.word.toLowerCase()) {
-      // 答对
-      setShowResult('correct')
-      const newStreak = progress.streak + 1
-      const newCorrect = progress.correctAnswers + 1
-
-      updateProgress({
-        totalLearned: progress.totalLearned + 1,
-        correctAnswers: newCorrect,
-        streak: newStreak
-      })
-
-      if (!learnedWords.includes(currentWord.id)) {
-        setLearnedWords([...learnedWords, currentWord.id])
-      }
-
-      triggerConfetti()
-    } else {
-      // 答错
-      setShowResult('wrong')
-      updateProgress({
-        wrongAnswers: progress.wrongAnswers + 1,
-        streak: 0
-      })
-    }
-  }, [currentWord, userInput, progress, learnedWords, updateProgress, setLearnedWords])
 
   const handleWrong = useCallback(() => {
     setHasCheckedAnswer(true)
