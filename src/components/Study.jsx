@@ -74,10 +74,19 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setPressedKey(key)
     setTimeout(() => setPressedKey(null), 150)
 
-    // 如果已提交，按回车或空格键跳转到下一个单词（但不包括字母键）
+    // 如果已提交，按回车或空格键跳转到下一个单词（按字母键先重置状态再输入）
     if (isSubmitted) {
       if (key === 'enter' || key === ' ') {
         nextWord()
+      } else if (key.length === 1 && /[a-z]/.test(key)) {
+        // 先重置到新单词状态，然后输入这个字母
+        setUserInput('')
+        setShowResult(null)
+        setShowHint(false)
+        setIsSubmitted(false)
+        const newWord = getRandomWord(currentWord?.id)
+        setCurrentWord(newWord)
+        setUserInput(key)
       }
       return
     }
