@@ -473,18 +473,19 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
               💡 {showHint ? '隐藏提示' : '显示提示'}
             </button>
           )}
-          {mode === 'exam' && (
-            <button
-              className="btn btn-primary"
-              onClick={hasCheckedAnswer ? nextWord : submitAnswer}
-              disabled={hasCheckedAnswer ? false : userInput.length === 0}
-            >
-              {hasCheckedAnswer ? '下一个单词 (Space)' : '检查答案 (Enter)'}
+          {mode === 'exam' && !hasCheckedAnswer && (
+            <button className="btn btn-primary" onClick={submitAnswer} disabled={userInput.length === 0}>
+              检查答案 (Enter)
             </button>
           )}
           {mode === 'exam' && !hasCheckedAnswer && (
             <button className="btn btn-danger" onClick={handleWrong}>
               显示答案
+            </button>
+          )}
+          {mode === 'exam' && hasCheckedAnswer && (
+            <button className="btn btn-primary" onClick={nextWord}>
+              下一个单词 (Space)
             </button>
           )}
           {mode === 'learn' && (
