@@ -23,10 +23,12 @@ const triggerConfetti = () => {
 }
 
 function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, progress, setCurrentPage }) {
+  const [mode, setMode] = useState('learn') // 'learn' | 'exam'
   const [currentWord, setCurrentWord] = useState(null)
   const [userInput, setUserInput] = useState('')
   const [showResult, setShowResult] = useState(null) // 'correct' | 'wrong' | null
   const [showHint, setShowHint] = useState(false)
+  const [pressedKey, setPressedKey] = useState(null)
 
   const getRandomWord = () => {
     const unlearned = wordLibrary.filter(w => !learnedWords.includes(w.id))
@@ -60,29 +62,40 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   }
 
   const handlePhysicalKeyboard = (e) => {
+    const key = e.key.toLowerCase()
+
+    // 按键高亮效果
+    setPressedKey(key)
+    setTimeout(() => setPressedKey(null), 150)
+
     if (showResult) {
-      if (e.key === 'Enter') {
+      if (key === 'enter') {
         nextWord()
       }
       return
     }
 
-    if (e.key === 'Backspace') {
+    if (key === 'backspace') {
       handleKeyPress('BACK')
-    } else if (e.key === ' ') {
+    } else if (key === ' ') {
       e.preventDefault()
       handleKeyPress('SPACE')
-    } else if (e.key === 'Enter') {
+    } else if (key === 'enter') {
       nextWord()
-    } else if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
-      handleKeyPress(e.key.toLowerCase())
+    } else if (key.length === 1 && /[a-z]/.test(key)) {
+      handleKeyPress(key)
     }
   }
 
   useEffect(() => {
     window.addEventListener('keydown', handlePhysicalKeyboard)
     return () => window.removeEventListener('keydown', handlePhysicalKeyboard)
-  }, [showResult, userInput, currentWord])
+  }, [showResult, userInput, currentWord, mode])
+
+  const toggleMode = () => {
+    setMode(prev => prev === 'learn' ? 'exam' : 'learn')
+    nextWord()
+  }
 
   const handleCorrect = () => {
     setShowResult('correct')
@@ -128,10 +141,17 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     if (showResult === 'correct') return '#10b981'
     if (showResult === 'wrong') return '#ef4444'
 
-    const targetIndex = userInput.length
-    if (targetIndex < currentWord?.word.length) {
-      return currentWord.word[targetIndex].toLowerCase() === lowerKey ? 'var(--primary)' : '#e5e7eb'
+    // 按键高亮
+    if (pressedKey === lowerKey) return 'var(--primary)'
+
+    // 学习模式：显示提示颜色
+    if (mode === 'learn') {
+      const targetIndex = userInput.length
+      if (targetIndex < currentWord?.word.length) {
+        return currentWord.word[targetIndex].toLowerCase() === lowerKey ? 'var(--primary)' : '#e5e7eb'
+      }
     }
+
     return '#e5e7eb'
   }
 
@@ -155,9 +175,21 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     <div className="container fade-in">
       <nav className="navbar">
         <div className="navbar-brand">
-          <span>📚 学习模式</span>
+          <span>📚 {mode === 'learn' ? '学习模式' : '考试模式'}</span>
         </div>
         <div className="navbar-nav">
+          <button
+            className={`nav-link ${mode === 'learn' ? 'active' : ''}`}
+            onClick={() => mode !== 'learn' && toggleMode()}
+          >
+            学习模式
+          </button>
+          <button
+            className={`nav-link ${mode === 'exam' ? 'active' : ''}`}
+            onClick={() => mode !== 'exam' && toggleMode()}
+          >
+            考试模式
+          </button>
           <button className="nav-link" onClick={() => setCurrentPage('home')}>
             返回首页
           </button>
@@ -184,68 +216,132 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         </div>
 
         <div style={{ marginBottom: '40px' }}>
-          <h1 style={{
-            fontSize: '48px',
-            fontWeight: '800',
-            color: 'var(--dark)',
-            marginBottom: '20px'
-          }}>
-            {currentWord.word}
-          </h1>
-          <p style={{
-            fontSize: '24px',
-            color: 'var(--primary)',
-            fontWeight: '600',
-            marginBottom: '16px'
-          }}>
-            {currentWord.meaning}
-          </p>
-          <p style={{
-            fontSize: '18px',
-            color: 'var(--gray)',
-            fontStyle: 'italic'
-          }}>
-            "{currentWord.example}"
-          </p>
+          {mode === 'learn' ? (
+            // 学习模式：显示单词、释义、例句
+            <>
+              <h1 style={{
+                fontSize: '48px',
+                fontWeight: '800',
+                color: 'var(--dark)',
+                marginBottom: '20px'
+              }}>
+                {currentWord.word}
+              </h1>
+              <p style={{
+                fontSize: '24px',
+                color: 'var(--primary)',
+                fontWeight: '600',
+                marginBottom: '16px'
+              }}>
+                {currentWord.meaning}
+              </p>
+              <p style={{
+                fontSize: '18px',
+                color: 'var(--gray)',
+                fontStyle: 'italic'
+              }}>
+                "{currentWord.example}"
+              </p>
+            </>
+          ) : (
+            // 考试模式：只显示释义和例句，隐藏单词
+            <>
+              <div style={{
+                fontSize: '24px',
+                color: 'var(--primary)',
+                fontWeight: '600',
+                marginBottom: '16px'
+              }}>
+                {currentWord.meaning}
+              </div>
+              <p style={{
+                fontSize: '18px',
+                color: 'var(--gray)',
+                fontStyle: 'italic',
+                marginBottom: '20px'
+              }}>
+                "{currentWord.example}"
+              </p>
+              <div style={{
+                fontSize: '14px',
+                color: 'var(--gray)',
+                marginBottom: '10px'
+              }}>
+                请拼写这个单词
+              </div>
+              {/* 显示占位符 */}
+              <div style={{
+                display: 'flex',
+                gap: '8px',
+                justifyContent: 'center',
+                marginBottom: '20px'
+              }}>
+                {Array(currentWord.word.length).fill(0).map((_, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      width: '40px',
+                      height: '50px',
+                      borderBottom: '3px solid var(--gray)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '24px',
+                      fontWeight: '700',
+                      color: userInput[index]
+                        ? userInput[index] === currentWord.word[index]
+                          ? '#10b981'
+                          : '#ef4444'
+                        : 'var(--gray)'
+                    }}
+                  >
+                    {userInput[index] || ''}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '20px',
-          marginBottom: '40px'
-        }}>
+        {mode === 'learn' && (
           <div style={{
             display: 'flex',
-            gap: '12px',
-            flexWrap: 'wrap',
-            justifyContent: 'center'
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '20px',
+            marginBottom: '40px'
           }}>
-            {userInput.split('').map((char, index) => (
-              <span
-                key={index}
-                style={{
-                  display: 'inline-block',
-                  width: '50px',
-                  height: '60px',
- lineHeight: '60px',
-                  fontSize: '32px',
-                  fontWeight: '700',
-                  color: 'white',
-                  background: char === currentWord.word[index]
-                    ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                    : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                  borderRadius: '10px',
-                  textAlign: 'center',
-                  boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
-                }}
-              >
-                {char}
-              </span>
-            ))}
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              flexWrap: 'wrap',
+              justifyContent: 'center'
+            }}>
+              {userInput.split('').map((char, index) => (
+                <span
+                  key={index}
+                  style={{
+                    display: 'inline-block',
+                    width: '50px',
+                    height: '60px',
+                    lineHeight: '60px',
+                    fontSize: '32px',
+                    fontWeight: '700',
+                    color: 'white',
+                    background: char === currentWord.word[index]
+                      ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                      : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                    borderRadius: '10px',
+                    textAlign: 'center',
+                    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
+                  }}
+                >
+                  {char}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {showResult === 'wrong' && (
           <div style={{
@@ -287,9 +383,19 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
               显示答案
             </button>
           )}
+          {mode === 'learn' && (
+            <button className="btn btn-secondary" onClick={toggleMode}>
+              切换到考试模式
+            </button>
+          )}
+          {mode === 'exam' && (
+            <button className="btn btn-secondary" onClick={toggleMode}>
+              切换到学习模式
+            </button>
+          )}
         </div>
 
-        {showHint && (
+        {showHint && mode === 'exam' && (
           <div style={{
             padding: '16px 24px',
             background: 'rgba(99, 102, 241, 0.1)',
