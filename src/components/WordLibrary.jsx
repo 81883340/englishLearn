@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 const techTermsMap = {
   'font': '字体',
   'size': '大小',
+  'fontsize': '字体大小',
   'color': '颜色',
   'background': '背景',
   'width': '宽度',
@@ -1180,84 +1181,118 @@ const translate = async (text) => {
   return text;
 };
 
-// 获取单词信息（音标、释义、例句）
+// 获取单词信息（音标、释义、例句）- 使用 Free Dictionary API（包含翻译）
 const fetchWordInfo = async (word) => {
   console.log(`开始获取单词信息: ${word}`);
   const wordLower = word.toLowerCase();
 
   try {
-    const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
-    let phonetic = ''
-    let englishDefinition = ''
-    let exampleSentence = ''
+    // 使用 Free Dictionary API，包含翻译、音标、例句
+    const response = await fetch(`https://api.freedictionaryapi.com/api/v1/entries/en/${word}?translations=true`)
 
-    // 如果字典API请求成功，获取详细信息
     if (response.ok) {
       console.log(`字典API请求成功: ${word}`);
       const data = await response.json()
-      if (data && data.length > 0) {
-        const entry = data[0]
+
+      if (data && data.entries && data.entries.length > 0) {
+        const entry = data.entries[0]
 
         // 获取音标
-        phonetic = entry.phonetic || ''
-        if (!phonetic && entry.phonetics) {
-          const phoneticObj = entry.phonetics.find(p => p.text)
-          if (phoneticObj) phonetic = phoneticObj.text
+        let phonetic = ''
+        if (entry.pronunciations && entry.pronunciations.length > 0) {
+          const phoneticObj = entry.pronunciations.find(p => p.type === 'IPA') || entry.pronunciations[0]
+          phonetic = phoneticObj.text || ''
+          console.log(`找到音标: "${phonetic}"`)
         }
 
-        // 获取释义（英文）和例句
-        if (entry.meanings && entry.meanings.length > 0) {
-          const firstMeaning = entry.meanings[0]
-          if (firstMeaning.definitions && firstMeaning.definitions.length > 0) {
-            const firstDef = firstMeaning.definitions[0]
-            englishDefinition = firstDef.definition || ''
+        // 获取第一个含义和例句
+        let englishDefinition = ''
+        let exampleSentence = ''
 
-            // 尝试获取例句 - 在当前定义中查找
-            if (firstDef.example) {
-              exampleSentence = firstDef.example
-              console.log(`找到例句 (当前定义): ${exampleSentence}`)
-            } else {
-              // 如果当前定义没有例句，遍历所有定义和含义寻找例句
-              for (const meaning of entry.meanings) {
-                if (meaning.definitions) {
-                  for (const def of meaning.definitions) {
-                    if (def.example) {
-                      exampleSentence = def.example
-                      console.log(`找到例句 (其他定义): ${exampleSentence}`)
-                      break
-                    }
-                  }
-                  if (exampleSentence) break
-                }
+        if (entry.senses && entry.senses.length > 0) {
+          const firstSense = entry.senses[0]
+          englishDefinition = firstSense.definition || ''
+
+          // 获取例句
+          if (firstSense.examples && firstSense.examples.length > 0) {
+            exampleSentence = firstSense.examples[0]
+            console.log(`找到例句: "${exampleSentence}"`)
+          } else {
+            // 如果第一个含义没有例句，查找其他含义
+            for (const sense of entry.senses) {
+              if (sense.examples && sense.examples.length > 0) {
+                exampleSentence = sense.examples[0]
+                console.log(`在其他含义中找到例句: "${exampleSentence}"`)
+                break
               }
             }
           }
-        }
 
-        console.log(`字典API返回 - 音标: "${phonetic}", 英文释义: "${englishDefinition.substring(0, 50)}...", 例句: "${exampleSentence || '无'}"`)
+          // 获取中文翻译
+          let chineseTranslation = ''
+          if (firstSense.translations && firstSense.translations.length > 0) {
+            // 查找中文翻译
+            const zhTranslation = firstSense.translations.find(t => t.language.code === 'zh' || t.language.name === 'Chinese')
+            if (zhTranslation) {
+              chineseTranslation = zhTranslation.word
+              console.log(`找到中文翻译: "${chineseTranslation}"`)
+            }
+          }
+
+          // 如果第一个含义没有中文翻译，查找其他含义
+          if (!chineseTranslation) {
+            for (const sense of entry.senses) {
+              if (sense.translations && sense.translations.length > 0) {
+                const zhTranslation = sense.translations.find(t => t.language.code === 'zh' || t.language.name === 'Chinese')
+                if (zhTranslation) {
+                  chineseTranslation = zhTranslation.word
+                  console.log(`在其他含义中找到中文翻译: "${chineseTranslation}"`)
+                  break
+                }
+              }
+              if (chineseTranslation) break
+            }
+          }
+
+          console.log(`字典API返回 - 音标: "${phonetic}", 英文释义: "${englishDefinition.substring(0, 50)}...", 中文: "${chineseTranslation}", 例句: "${exampleSentence || '无'}"`)
+
+          // 如果API没有返回中文翻译，使用翻译API
+          let chineseMeaning = chineseTranslation
+          if (!chineseMeaning) {
+            console.log(`API未返回中文翻译，使用翻译API`)
+            chineseMeaning = await translate(word)
+          }
+
+          console.log(`单词 ${word} 最终结果:`, {
+            phonetic,
+            englishDefinition,
+            chineseMeaning,
+            exampleSentence
+          });
+
+          return {
+            word: wordLower,
+            phonetic,
+            englishDefinition,
+            chineseMeaning,
+            example: exampleSentence || `${word} - example sentence`
+          }
+        }
       }
     } else {
       console.log(`字典API请求失败 (${response.status}): ${word}`);
     }
 
-    console.log(`准备翻译单词本身: "${word}"`);
-
-    // 直接翻译单词本身，而不是英文解释
-    let chineseMeaning = await translate(word);
-
-    console.log(`单词 ${word} 最终结果:`, {
-      phonetic,
-      englishDefinition,
-      chineseMeaning,
-      exampleSentence
-    });
+    // 如果字典API没有返回数据，使用翻译API
+    console.log(`字典API无数据，使用翻译API翻译单词: "${word}"`)
+    const chineseMeaning = await translate(word);
 
     return {
       word: wordLower,
-      phonetic,
-      englishDefinition,
+      phonetic: '',
+      englishDefinition: word,
       chineseMeaning,
-      example: exampleSentence || `${word} - example sentence`
+      example: `${word} - example sentence`
     }
   } catch (error) {
     console.error('获取单词信息失败:', error)
