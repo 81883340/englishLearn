@@ -30,26 +30,12 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   const [showResult, setShowResult] = useState(null) // 'correct' | 'wrong' | null
   const [showHint, setShowHint] = useState(false)
   const [pressedKey, setPressedKey] = useState(null)
-
-  // 使用 ref 来保存最新状态，避免闭包问题
-  const showResultRef = useRef(null)
-  const modeRef = useRef(null)
-  const userInputRef = useRef('')
-  const currentWordRef = useRef(null)
-
-  // 同步 ref 和 state（合并为一个 effect 以提高性能）
-  useEffect(() => {
-    showResultRef.current = showResult
-    modeRef.current = mode
-    userInputRef.current = userInput
-    currentWordRef.current = currentWord
-  }, [showResult, mode, userInput, currentWord])
+  const [isSubmitted, setIsSubmitted] = useState(false)
 
   const getRandomWord = (excludeId = null) => {
     const unlearned = wordLibrary.filter(w => !learnedWords.includes(w.id))
     let pool = unlearned.length > 0 ? unlearned : wordLibrary
 
-    // 如果需要排除当前单词
     if (excludeId && pool.length > 1) {
       pool = pool.filter(w => w.id !== excludeId)
     }
@@ -70,7 +56,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   }, [wordLibrary, learnedWords, mode])
 
   const handleKeyPress = (key) => {
-    if (showResultRef.current) return
+    if (isSubmitted) return
 
     if (key === 'BACK') {
       setUserInput(prev => prev.slice(0, -1))
@@ -88,8 +74,8 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setPressedKey(key)
     setTimeout(() => setPressedKey(null), 150)
 
-    // 如果显示结果中，按任意键（回车、空格或字母）跳转到下一个单词
-    if (showResultRef.current) {
+    // 如果已提交，按任意键跳转到下一个单词
+    if (isSubmitted) {
       if (key === 'enter' || key === ' ' || key.length === 1) {
         nextWord()
       }
@@ -97,7 +83,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     }
 
     // 学习模式：按任意键切换到下一个单词（排除特殊键）
-    if (modeRef.current === 'learn') {
+    if (mode === 'learn') {
       if (!e.ctrlKey && !e.altKey && !e.metaKey &&
           key !== 'control' && key !== 'alt' && key !== 'meta' &&
           key !== 'backspace' && key !== 'tab' && key !== 'escape') {
@@ -107,7 +93,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     }
 
     // 考试模式：处理拼写输入和提交
-    if (modeRef.current === 'exam' && !showResultRef.current) {
+    if (mode === 'exam' && !isSubmitted) {
       if (key === 'backspace') {
         handleKeyPress('BACK')
       } else if (key === ' ') {
@@ -115,7 +101,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         handleKeyPress('SPACE')
       } else if (key === 'enter') {
         // 回车键提交答案
-        checkAnswer()
+        submitAnswer()
         e.preventDefault()
       } else if (key.length === 1 && /[a-z]/.test(key)) {
         handleKeyPress(key)
@@ -126,67 +112,52 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   useEffect(() => {
     window.addEventListener('keydown', handlePhysicalKeyboard)
     return () => window.removeEventListener('keydown', handlePhysicalKeyboard)
-  }, [showResultRef, modeRef])
+  }, [mode, isSubmitted, userInput, currentWord])
 
   const toggleMode = () => {
     setMode(prev => prev === 'learn' ? 'exam' : 'learn')
     nextWord()
   }
 
-  // 考试模式：检查答案
-  const checkAnswer = () => {
-    const currentWord = currentWordRef.current
-    const userInput = userInputRef.current
-
+  const submitAnswer = () => {
     if (!currentWord || userInput.length === 0) return
+
+    setIsSubmitted(true)
+    setShowResult(null)
 
     if (userInput.toLowerCase() === currentWord.word.toLowerCase()) {
       // 答对
-      setShowResult('correct')
-      const newStreak = progress.streak + 1
-      const newCorrect = progress.correctAnswers + 1
+      setTimeout(() => {
+        setShowResult('correct')
+        const newStreak = progress.streak + 1
+        const newCorrect = progress.correctAnswers + 1
 
-      updateProgress({
-        totalLearned: progress.totalLearned + 1,
-        correctAnswers: newCorrect,
-        streak: newStreak
-      })
+        updateProgress({
+          totalLearned: progress.totalLearned + 1,
+          correctAnswers: newCorrect,
+          streak: newStreak
+        })
 
-      if (!learnedWords.includes(currentWord.id)) {
-        setLearnedWords([...learnedWords, currentWord.id])
-      }
+        if (!learnedWords.includes(currentWord.id)) {
+          setLearnedWords([...learnedWords, currentWord.id])
+        }
 
-      triggerConfetti()
+        triggerConfetti()
+      }, 0)
     } else {
       // 答错
-      setShowResult('wrong')
-      updateProgress({
-        wrongAnswers: progress.wrongAnswers + 1,
-        streak: 0
-      })
+      setTimeout(() => {
+        setShowResult('wrong')
+        updateProgress({
+          wrongAnswers: progress.wrongAnswers + 1,
+          streak: 0
+        })
+      }, 0)
     }
-  }
-
-  // 保持向后兼容
-  const handleCorrect = () => {
-    setShowResult('correct')
-    const newStreak = progress.streak + 1
-    const newCorrect = progress.correctAnswers + 1
-
-    updateProgress({
-      totalLearned: progress.totalLearned + 1,
-      correctAnswers: newCorrect,
-      streak: newStreak
-    })
-
-    if (!learnedWords.includes(currentWord.id)) {
-      setLearnedWords([...learnedWords, currentWord.id])
-    }
-
-    triggerConfetti()
   }
 
   const handleWrong = () => {
+    setIsSubmitted(true)
     setShowResult('wrong')
     updateProgress({
       wrongAnswers: progress.wrongAnswers + 1,
@@ -198,6 +169,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setUserInput('')
     setShowResult(null)
     setShowHint(false)
+    setIsSubmitted(false)
 
     if (mode === 'learn') {
       const newIndex = (currentWordIndex + 1) % wordLibrary.length
@@ -212,6 +184,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setUserInput('')
     setShowResult(null)
     setShowHint(false)
+    setIsSubmitted(false)
 
     if (mode === 'learn') {
       const newIndex = (currentWordIndex - 1 + wordLibrary.length) % wordLibrary.length
@@ -465,21 +438,21 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
               💡 {showHint ? '隐藏提示' : '显示提示'}
             </button>
           )}
-          {showResult && mode === 'exam' && (
+          {isSubmitted && mode === 'exam' && (
             <button className="btn btn-primary" onClick={nextWord}>
               下一个单词 →
             </button>
           )}
-          {!showResult && mode === 'exam' && (
+          {!isSubmitted && mode === 'exam' && (
             <button
               className="btn btn-primary"
-              onClick={checkAnswer}
+              onClick={submitAnswer}
               disabled={userInput.length === 0}
             >
               检查答案 (Enter)
             </button>
           )}
-          {!showResult && mode === 'exam' && (
+          {!isSubmitted && mode === 'exam' && (
             <button className="btn btn-danger" onClick={handleWrong}>
               显示答案
             </button>
@@ -555,11 +528,11 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
                     fontWeight: '600',
                     background: getKeyColor(key),
                     color: getKeyColor(key) === '#e5e7eb' ? 'var(--dark)' : 'white',
-                    cursor: showResult ? 'not-allowed' : 'pointer',
+                    cursor: isSubmitted ? 'not-allowed' : 'pointer',
                     transition: 'all 0.2s ease',
                     boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
                   }}
-                  disabled={showResult}
+                  disabled={isSubmitted}
                   onMouseDown={(e) => e.target.style.transform = 'scale(0.95)'}
                   onMouseUp={(e) => e.target.style.transform = 'scale(1)'}
                   onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
@@ -582,11 +555,11 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
                 fontWeight: '600',
                 background: '#e5e7eb',
                 color: 'var(--dark)',
-                cursor: showResult ? 'not-allowed' : 'pointer',
+                cursor: isSubmitted ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s ease',
                 boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
               }}
-              disabled={showResult}
+              disabled={isSubmitted}
             >
               ← Back
             </button>
@@ -601,11 +574,11 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
                 fontWeight: '600',
                 background: '#e5e7eb',
                 color: 'var(--dark)',
-                cursor: showResult ? 'not-allowed' : 'pointer',
+                cursor: isSubmitted ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s ease',
                 boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
               }}
-              disabled={showResult}
+              disabled={isSubmitted}
             >
               Space
             </button>
