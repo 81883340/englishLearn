@@ -1233,20 +1233,42 @@ const fetchWordInfo = async (word) => {
             console.log(`找到例句 (quotes): "${exampleSentence}"`)
           }
 
-          // 如果第一个含义没有例句，查找其他含义
+          // 如果第一个含义没有例句，查找其他含义（包括subsenses）
           if (!exampleSentence) {
-            console.log(`第一个含义没有例句，在其他含义中查找...`)
+            console.log(`第一个含义没有例句，在其他含义（包括subsenses）中查找...`)
+            // 收集所有senses（包括subsenses）
+            const allSenses = [...entry.senses]
             for (const sense of entry.senses) {
-              if (sense.examples && sense.examples.length > 0) {
-                exampleSentence = sense.examples[0]
-                console.log(`在其他含义中找到例句 (examples): "${exampleSentence}"`)
-                break
-              } else if (sense.quotes && sense.quotes.length > 0) {
-                exampleSentence = sense.quotes[0].text
-                console.log(`在其他含义中找到例句 (quotes): "${exampleSentence}"`)
-                break
+              if (sense.subsenses && sense.subsenses.length > 0) {
+                for (const subsense of sense.subsenses) {
+                  if (subsense.examples && subsense.examples.length > 0) {
+                    exampleSentence = subsense.examples[0]
+                    console.log(`在subsenses中找到例句: "${exampleSentence}"`)
+                    break
+                  } else if (subsense.quotes && subsense.quotes.length > 0) {
+                    exampleSentence = subsense.quotes[0].text
+                    console.log(`在subsenses的quotes中找到例句: "${exampleSentence}"`)
+                    break
+                  }
+                  allSenses.push(subsense)
+                }
               }
-            }
+              
+              if (!exampleSentence) {
+                // 遍历收集的所有senses查找例句
+                for (const sense of allSenses) {
+                  if (sense.examples && sense.examples.length > 0) {
+                    exampleSentence = sense.examples[0]
+                    console.log(`在其他senses中找到例句 (examples): "${exampleSentence}"`)
+                    break
+                  } else if (sense.quotes && sense.quotes.length > 0) {
+                    exampleSentence = sense.quotes[0].text
+                    console.log(`在其他senses中找到例句 (quotes): "${exampleSentence}"`)
+                    break
+                  }
+                  if (exampleSentence) break
+                }
+              }
           }
 
           // 获取中文翻译 - 在所有含义的 translations 中查找
@@ -1271,7 +1293,6 @@ const fetchWordInfo = async (word) => {
           let chineseMeaning = chineseTranslation
           if (!chineseMeaning) {
             console.log(`API未返回中文翻译，使用翻译API`)
-            chineseMeaning = await translate(word)
           }
 
           console.log(`单词 ${word} 最终结果:`, {
@@ -1305,6 +1326,7 @@ const fetchWordInfo = async (word) => {
       chineseMeaning,
       example: `${word} - example sentence`
     }
+  }
   } catch (error) {
     console.error('获取单词信息失败:', error)
     // 即使出错也返回基本结构
