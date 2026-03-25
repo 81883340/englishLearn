@@ -23,15 +23,16 @@ const triggerConfetti = () => {
 }
 
 function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, progress, setCurrentPage }) {
-  const [mode, setMode] = useState('learn')
+  const [mode, setMode] = useState('learn') // 'learn' | 'exam'
   const [currentWord, setCurrentWord] = useState(null)
   const [currentWordIndex, setCurrentWordIndex] = useState(0)
   const [userInput, setUserInput] = useState('')
-  const [showResult, setShowResult] = useState(null)
+  const [showResult, setShowResult] = useState(null) // 'correct' | 'wrong' | null
   const [showHint, setShowHint] = useState(false)
   const [pressedKey, setPressedKey] = useState(null)
   const [hasCheckedAnswer, setHasCheckedAnswer] = useState(false)
 
+  // 使用 ref 来避免闭包问题
   const hasCheckedAnswerRef = useRef(hasCheckedAnswer)
   useEffect(() => {
     hasCheckedAnswerRef.current = hasCheckedAnswer
@@ -45,21 +46,23 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
       pool = pool.filter(w => w.id !== excludeId)
     }
 
-    return pool[Math.floor(Math.random() * pool.length)]
+    const randomIndex = Math.floor(Math.random() * pool.length)
+    return pool[randomIndex]
   }, [wordLibrary, learnedWords])
 
-  // ✅ 修复点：移除了 learnedWords 依赖
+  // 初始化单词
   useEffect(() => {
-    if (wordLibrary.length === 0) return
-
-    if (mode === 'learn') {
-      setCurrentWordIndex(0)
-      setCurrentWord(wordLibrary[0])
-    } else {
-      setCurrentWord(getRandomWord())
+    if (wordLibrary.length > 0) {
+      if (mode === 'learn') {
+        setCurrentWordIndex(0)
+        setCurrentWord(wordLibrary[0])
+      } else {
+        setCurrentWord(getRandomWord())
+      }
     }
-  }, [wordLibrary, mode, getRandomWord])
+  }, [mode, wordLibrary])
 
+  // 重置到新单词（用于考试模式）
   const resetToNextWord = useCallback(() => {
     const newWord = getRandomWord(currentWord?.id)
     setCurrentWord(newWord)
@@ -69,6 +72,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setHasCheckedAnswer(false)
   }, [currentWord, getRandomWord])
 
+  // 虚拟键盘按键处理（未提交状态）
   const handleKeyPress = useCallback((key) => {
     if (hasCheckedAnswerRef.current) return
 
@@ -81,25 +85,30 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     }
   }, [])
 
+  // 物理键盘处理 - 使用 useCallback 避免频繁重建
   const handlePhysicalKeyboard = useCallback((e) => {
     const key = e.key.toLowerCase()
 
+    // 按键高亮效果
     setPressedKey(key)
     setTimeout(() => setPressedKey(null), 150)
 
     const checked = hasCheckedAnswerRef.current
 
+    // 考试模式 - 已检查答案状态
     if (mode === 'exam' && checked) {
+      // 按空格键切换到下一个单词
       if (key === ' ') {
         resetToNextWord()
       }
       return
     }
 
+    // 学习模式
     if (mode === 'learn') {
       if (!e.ctrlKey && !e.altKey && !e.metaKey &&
-          key !== 'control' && key !== 'alt' && key !== 'meta') {
-
+          key !== 'control' && key !== 'alt' && key !== 'meta' &&
+          key !== 'backspace' && key !== 'tab' && key !== 'escape') {
         const newIndex = (currentWordIndex + 1) % wordLibrary.length
         setCurrentWordIndex(newIndex)
         setCurrentWord(wordLibrary[newIndex])
@@ -111,6 +120,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
       }
     }
 
+    // 考试模式 - 未检查答案状态
     if (mode === 'exam' && !checked) {
       if (key === 'backspace') {
         handleKeyPress('BACK')
@@ -118,6 +128,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         e.preventDefault()
         handleKeyPress('SPACE')
       } else if (key === 'enter') {
+        // 回车键提交答案
         submitAnswer()
         e.preventDefault()
       } else if (key.length === 1 && /[a-z]/.test(key)) {
@@ -132,18 +143,18 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   }, [handlePhysicalKeyboard])
 
   const toggleMode = () => {
-    const newMode = mode === 'learn' ? 'exam' : 'learn'
-    setMode(newMode)
-
+    setMode(prev => prev === 'learn' ? 'exam' : 'learn')
+    // 切换模式后重置状态
     setUserInput('')
     setShowResult(null)
     setShowHint(false)
     setHasCheckedAnswer(false)
-
-    if (newMode === 'learn') {
+    if (mode === 'exam') {
+      // 从考试切换到学习，重置到第一个单词
       setCurrentWordIndex(0)
       setCurrentWord(wordLibrary[0])
     } else {
+      // 从学习切换到考试，选择随机单词
       setCurrentWord(getRandomWord())
     }
   }
@@ -154,12 +165,15 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setHasCheckedAnswer(true)
 
     if (userInput.toLowerCase() === currentWord.word.toLowerCase()) {
+      // 答对
       setShowResult('correct')
+      const newStreak = progress.streak + 1
+      const newCorrect = progress.correctAnswers + 1
 
       updateProgress({
         totalLearned: progress.totalLearned + 1,
-        correctAnswers: progress.correctAnswers + 1,
-        streak: progress.streak + 1
+        correctAnswers: newCorrect,
+        streak: newStreak
       })
 
       if (!learnedWords.includes(currentWord.id)) {
@@ -168,6 +182,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
 
       triggerConfetti()
     } else {
+      // 答错
       setShowResult('wrong')
       updateProgress({
         wrongAnswers: progress.wrongAnswers + 1,
@@ -176,14 +191,14 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     }
   }, [currentWord, userInput, progress, learnedWords, updateProgress, setLearnedWords])
 
-  const handleWrong = () => {
+  const handleWrong = useCallback(() => {
     setHasCheckedAnswer(true)
     setShowResult('wrong')
     updateProgress({
       wrongAnswers: progress.wrongAnswers + 1,
       streak: 0
     })
-  }
+  }, [updateProgress])
 
   const nextWord = () => {
     setUserInput('')
@@ -200,7 +215,59 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     }
   }
 
-  if (!currentWord) return null
+  const prevWord = () => {
+    setUserInput('')
+    setShowResult(null)
+    setShowHint(false)
+    setHasCheckedAnswer(false)
+
+    if (mode === 'learn') {
+      const newIndex = (currentWordIndex - 1 + wordLibrary.length) % wordLibrary.length
+      setCurrentWordIndex(newIndex)
+      setCurrentWord(wordLibrary[newIndex])
+    }
+  }
+
+  const keyboardRows = [
+    ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+    ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+    ['z', 'x', 'c', 'v', 'b', 'n', 'm']
+  ]
+
+  const getKeyColor = (key) => {
+    const lowerKey = key.toLowerCase()
+    if (showResult === 'correct') return '#10b981'
+    if (showResult === 'wrong') return '#ef4444'
+
+    // 按键高亮
+    if (pressedKey === lowerKey) return 'var(--primary)'
+
+    // 学习模式：显示提示颜色
+    if (mode === 'learn') {
+      const targetIndex = userInput.length
+      if (targetIndex < currentWord?.word.length) {
+        return currentWord.word[targetIndex].toLowerCase() === lowerKey ? 'var(--primary)' : '#e5e7eb'
+      }
+    }
+
+    return '#e5e7eb'
+  }
+
+  if (!currentWord) {
+    return (
+      <div className="container">
+        <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
+          <h2 style={{ fontSize: '28px', marginBottom: '20px' }}>词库为空</h2>
+          <p style={{ color: 'var(--gray)', marginBottom: '30px' }}>
+            请先在词库管理中添加单词
+          </p>
+          <button className="btn btn-primary" onClick={() => setCurrentPage('library')}>
+            去添加单词
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="container fade-in">
