@@ -1,9 +1,16 @@
-import React from 'react'
+import React, { useState } from 'react'
+import toast from 'react-hot-toast'
 
-function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackupProgress, handleRestoreProgress, badgeDefinitions }) {
+function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackupProgress, handleRestoreProgress, badgeDefinitions, dailyGoal, setDailyGoal, points, checkInHistory, handleCheckIn }) {
   const accuracy = progress.correctAnswers + progress.wrongAnswers > 0
     ? Math.round((progress.correctAnswers / (progress.correctAnswers + progress.wrongAnswers)) * 100)
     : 0
+
+  // 检查今日是否已打卡
+  const getTodayDate = () => new Date().toISOString().split('T')[0]
+  const isCheckedInToday = checkInHistory.includes(getTodayDate())
+  const [showGoalModal, setShowGoalModal] = useState(false)
+  const [tempGoal, setTempGoal] = useState(dailyGoal)
 
   return (
     <div className="container fade-in">
@@ -177,6 +184,149 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
           </div>
         </div>
       </div>
+
+      <div className="card" style={{ marginTop: '30px' }}>
+        <h2 style={{
+          fontSize: '24px',
+          fontWeight: '700',
+          color: 'var(--dark)',
+          marginBottom: '30px',
+          textAlign: 'center'
+        }}>
+          每日学习 & 积分
+        </h2>
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-icon">🎯</div>
+            <div className="stat-value">{dailyGoal}</div>
+            <div className="stat-label">每日目标</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon">⭐</div>
+            <div className="stat-value">{points}</div>
+            <div className="stat-label">我的积分</div>
+          </div>
+          <div className="stat-card"
+            style={{ cursor: 'pointer', transition: 'all 0.3s ease' }}
+            onClick={() => setShowGoalModal(true)}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-4px)'
+              e.currentTarget.style.boxShadow = '0 8px 24px rgba(99, 102, 241, 0.3)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)'
+              e.currentTarget.style.boxShadow = 'none'
+            }}
+          >
+            <div className="stat-icon">⚙️</div>
+            <div className="stat-value">设置</div>
+            <div className="stat-label">调整目标</div>
+          </div>
+        </div>
+        <div style={{
+          marginTop: '20px',
+          textAlign: 'center'
+        }}>
+          <button
+            className={`btn ${isCheckedInToday ? 'btn-secondary' : 'btn-primary'}`}
+            onClick={handleCheckIn}
+            disabled={isCheckedInToday}
+            style={{
+              padding: '12px 32px',
+              fontSize: '16px',
+              fontWeight: '600',
+              borderRadius: '12px',
+              minWidth: '200px',
+              opacity: isCheckedInToday ? 0.6 : 1
+            }}
+          >
+            {isCheckedInToday ? '✓ 今日已打卡' : '📅 每日打卡'}
+          </button>
+          <p style={{
+            fontSize: '13px',
+            color: 'var(--gray)',
+            marginTop: '12px'
+          }}>
+            {isCheckedInToday ? '明天再来打卡吧！' : '完成学习后记得打卡哦！'}
+          </p>
+        </div>
+      </div>
+
+      {/* 设置每日目标弹窗 */}
+      {showGoalModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div className="card" style={{ maxWidth: '400px', width: '90%' }}>
+            <h3 style={{
+              fontSize: '20px',
+              fontWeight: '700',
+              marginBottom: '20px',
+              color: 'var(--dark)'
+            }}>
+              设置每日学习目标
+            </h3>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: '500',
+                color: 'var(--dark)'
+              }}>
+                每日学习单词数
+              </label>
+              <input
+                type="number"
+                className="input"
+                value={tempGoal}
+                onChange={(e) => setTempGoal(Math.max(1, parseInt(e.target.value) || 1))}
+                min="1"
+                max="100"
+                style={{ width: '100%' }}
+              />
+              <div style={{
+                marginTop: '8px',
+                fontSize: '12px',
+                color: 'var(--gray)'
+              }}>
+                当前目标: {tempGoal} 个单词/天，完成后可获得 {tempGoal * 2} 积分
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  setDailyGoal(tempGoal)
+                  setShowGoalModal(false)
+                  toast.success(`每日目标已设置为 ${tempGoal} 个单词`)
+                }}
+                style={{ flex: 1 }}
+              >
+                确定
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setShowGoalModal(false)
+                  setTempGoal(dailyGoal)
+                }}
+                style={{ flex: 1 }}
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{
         display: 'grid',

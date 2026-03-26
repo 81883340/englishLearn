@@ -25,7 +25,9 @@ const safeLoadFromStorage = (key, defaultValue) => {
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home')
-  const [currentBook, setCurrentBook] = useState('全部词本')
+  const [currentBook, setCurrentBook] = useState(() =>
+    safeLoadFromStorage('currentBook', '全部词本')
+  )
   const [progress, setProgress] = useState(() =>
     safeLoadFromStorage('englishProgress', {
       totalLearned: 0,
@@ -57,6 +59,22 @@ function App() {
 
   const [mistakeBook, setMistakeBook] = useState(() =>
     safeLoadFromStorage('mistakeBook', [])
+  )
+
+  // 保存每个词本的学习进度（当前学习到的索引）
+  const [studyProgress, setStudyProgress] = useState(() =>
+    safeLoadFromStorage('studyProgress', {})
+  )
+
+  // 学习目标和积分系统
+  const [dailyGoal, setDailyGoal] = useState(() =>
+    safeLoadFromStorage('dailyGoal', 20)
+  )
+  const [points, setPoints] = useState(() =>
+    safeLoadFromStorage('points', 0)
+  )
+  const [checkInHistory, setCheckInHistory] = useState(() =>
+    safeLoadFromStorage('checkInHistory', [])
   )
 
   const badgeDefinitions = [
@@ -102,6 +120,75 @@ function App() {
       console.error('Failed to save progress:', error)
     }
   }, [progress])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('currentBook', currentBook)
+    } catch (error) {
+      console.error('Failed to save currentBook:', error)
+    }
+  }, [currentBook])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('studyProgress', JSON.stringify(studyProgress))
+    } catch (error) {
+      console.error('Failed to save studyProgress:', error)
+    }
+  }, [studyProgress])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('dailyGoal', dailyGoal)
+    } catch (error) {
+      console.error('Failed to save dailyGoal:', error)
+    }
+  }, [dailyGoal])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('points', points)
+    } catch (error) {
+      console.error('Failed to save points:', error)
+    }
+  }, [points])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('checkInHistory', JSON.stringify(checkInHistory))
+    } catch (error) {
+      console.error('Failed to save checkInHistory:', error)
+    }
+  }, [checkInHistory])
+
+  // 检查今日是否已打卡
+  const getTodayDate = () => new Date().toISOString().split('T')[0]
+
+  const isCheckedInToday = () => {
+    const today = getTodayDate()
+    return checkInHistory.includes(today)
+  }
+
+  // 打卡功能
+  const handleCheckIn = () => {
+    if (isCheckedInToday()) {
+      toast.error('今天已经打卡过了！')
+      return
+    }
+
+    const today = getTodayDate()
+    setCheckInHistory([...checkInHistory, today])
+    setPoints(points + 10) // 每日打卡奖励10积分
+    toast.success('🎉 打卡成功！获得10积分')
+    triggerConfetti()
+  }
+
+  // 完成每日学习目标
+  const handleCompleteDailyGoal = () => {
+    setPoints(points + dailyGoal * 2) // 每个单词奖励2积分
+    toast.success(`🏆 完成今日目标！获得 ${dailyGoal * 2} 积分`)
+    triggerConfetti()
+  }
 
   const updateProgress = (newProgress) => {
     const updated = { ...progress, ...newProgress }
@@ -210,6 +297,11 @@ function App() {
             handleBackupProgress={handleBackupProgress}
             handleRestoreProgress={handleRestoreProgress}
             badgeDefinitions={badgeDefinitions}
+            dailyGoal={dailyGoal}
+            setDailyGoal={setDailyGoal}
+            points={points}
+            checkInHistory={checkInHistory}
+            handleCheckIn={handleCheckIn}
           />
         )
       case 'study':
@@ -225,6 +317,11 @@ function App() {
             setMistakeBook={setMistakeBook}
             currentBook={currentBook}
             setCurrentBook={setCurrentBook}
+            studyProgress={studyProgress}
+            setStudyProgress={setStudyProgress}
+            dailyGoal={dailyGoal}
+            setPoints={setPoints}
+            handleCompleteDailyGoal={handleCompleteDailyGoal}
           />
         )
       case 'library':

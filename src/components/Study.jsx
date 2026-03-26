@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import triggerConfetti from '../utils/confetti'
+import toast from 'react-hot-toast'
 
-function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, progress, setCurrentPage, mistakeBook, setMistakeBook, currentBook, setCurrentBook }) {
+function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, progress, setCurrentPage, mistakeBook, setMistakeBook, currentBook, dailyGoal, handleCompleteDailyGoal }) {
   const [mode, setMode] = useState('learn') // 'learn' | 'exam'
   const [currentWord, setCurrentWord] = useState(null)
   const [currentWordIndex, setCurrentWordIndex] = useState(0)
@@ -10,11 +11,34 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   const [showHint, setShowHint] = useState(false)
   const [pressedKey, setPressedKey] = useState(null)
   const [hasCheckedAnswer, setHasCheckedAnswer] = useState(false)
+  const [todayLearnedCount, setTodayLearnedCount] = useState(0)
   
   // 根据当前词本过滤单词
-  const filteredWordLibrary = currentBook === '全部词本' 
-    ? wordLibrary 
+  const filteredWordLibrary = currentBook === '全部词本'
+    ? wordLibrary
     : wordLibrary.filter(w => w.bookName === currentBook)
+
+  // 计算今日应该学习的单词范围（按每日目标分割词本）
+  const getTodayWordRange = () => {
+    if (currentBook === '全部词本') {
+      return { start: 0, end: filteredWordLibrary.length }
+    }
+
+    // 使用词本名哈希作为种子，确保每个词本的学习进度独立
+    const bookHash = currentBook.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+    const startDate = new Date('2024-01-01') // 假设2024-01-01为开始日期
+    const daysSinceStart = Math.floor((new Date() - startDate) / (1000 * 60 * 60 * 24))
+
+    const dayIndex = daysSinceStart % Math.ceil(filteredWordLibrary.length / dailyGoal)
+    const start = dayIndex * dailyGoal
+    const end = Math.min(start + dailyGoal, filteredWordLibrary.length)
+
+    return { start, end }
+  }
+
+  // 今日应学习的单词
+  const wordRange = getTodayWordRange()
+  const todayWords = filteredWordLibrary.slice(wordRange.start, wordRange.end)
 
   // 使用 ref 来避免闭包问题
   const hasCheckedAnswerRef = useRef(hasCheckedAnswer)
@@ -36,15 +60,17 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
 
   // 初始化单词
   useEffect(() => {
-    if (filteredWordLibrary.length > 0) {
+    if (todayWords.length > 0) {
       if (mode === 'learn') {
+        // 从今日应学习单词的第一个开始
         setCurrentWordIndex(0)
-        setCurrentWord(filteredWordLibrary[0])
+        setCurrentWord(todayWords[0])
+        setTodayLearnedCount(0)
       } else {
         setCurrentWord(getRandomWord())
       }
     }
-  }, [mode, filteredWordLibrary])
+  }, [mode, todayWords, currentBook, dailyGoal])
 
   // 重置到新单词（用于考试模式）
   const resetToNextWord = useCallback(() => {
@@ -80,6 +106,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
       setShowResult('correct')
       const newStreak = progress.streak + 1
       const newCorrect = progress.correctAnswers + 1
+      const newTodayCount = todayLearnedCount + 1
 
       updateProgress({
         totalLearned: progress.totalLearned + 1,
@@ -89,6 +116,17 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
 
       if (!learnedWords.includes(currentWord.id)) {
         setLearnedWords([...learnedWords, currentWord.id])
+      }
+
+      setTodayLearnedCount(newTodayCount)
+
+      // 检查是否完成每日目标
+      if (mode === 'learn' && newTodayCount >= dailyGoal) {
+        if (newTodayCount === dailyGoal) {
+          // 刚好完成目标
+          handleCompleteDailyGoal()
+          toast.success('🎉 恭喜完成今日学习目标！')
+        }
       }
 
       triggerConfetti()
@@ -131,7 +169,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         }])
       }
     }
-  }, [currentWord, userInput, progress, learnedWords, updateProgress, setLearnedWords, mistakeBook, setMistakeBook])
+  }, [currentWord, userInput, progress, learnedWords, updateProgress, setLearnedWords, mistakeBook, setMistakeBook, mode, todayLearnedCount, dailyGoal, handleCompleteDailyGoal])
 
   // 物理键盘处理 - 使用 useCallback 避免频繁重建
   const handlePhysicalKeyboard = useCallback((e) => {
@@ -157,9 +195,20 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
       if (!e.ctrlKey && !e.altKey && !e.metaKey &&
           key !== 'control' && key !== 'alt' && key !== 'meta' &&
           key !== 'backspace' && key !== 'tab' && key !== 'escape') {
-        const newIndex = (currentWordIndex + 1) % wordLibrary.length
-        setCurrentWordIndex(newIndex)
-        setCurrentWord(wordLibrary[newIndex])
+        if (currentWordIndex < todayWords.length - 1) {
+          // 还有今日的单词，继续学习
+          const newIndex = currentWordIndex + 1
+          setCurrentWordIndex(newIndex)
+          setCurrentWord(todayWords[newIndex])
+          setTodayLearnedCount(newIndex + 1)
+        } else {
+          // 今日单词学完了
+          if (confirm(`恭喜！今日目标已完成！\n已学习 ${todayWords.length} 个单词\n是否继续学习？`)) {
+            const globalIndex = (filteredWordLibrary.findIndex(w => w.id === currentWord.id) + 1) % filteredWordLibrary.length
+            setCurrentWordIndex(globalIndex)
+            setCurrentWord(filteredWordLibrary[globalIndex])
+          }
+        }
         setUserInput('')
         setShowResult(null)
         setShowHint(false)
@@ -183,7 +232,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         handleKeyPress(key)
       }
     }
-  }, [mode, currentWordIndex, wordLibrary, handleKeyPress, resetToNextWord, submitAnswer])
+  }, [mode, currentWordIndex, filteredWordLibrary, handleKeyPress, resetToNextWord, submitAnswer, setStudyProgress, currentBook])
 
   useEffect(() => {
     window.addEventListener('keydown', handlePhysicalKeyboard)
