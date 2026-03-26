@@ -4,10 +4,25 @@ import React, { useState, useEffect } from 'react'
 const speakWord = (word) => {
   if (!word) return
   if ('speechSynthesis' in window) {
+    // 停止之前的发音
+    window.speechSynthesis.cancel()
+
     const utterance = new SpeechSynthesisUtterance(word)
     utterance.lang = 'en-US'
-    utterance.rate = 0.9
+    utterance.rate = 1  // 正常语速
     utterance.pitch = 1
+    utterance.volume = 1  // 最大音量
+
+    // 尝试获取更好的语音
+    const voices = window.speechSynthesis.getVoices()
+    const enVoice = voices.find(v => v.lang.includes('en-US') && (v.name.includes('Google') ||
+                                     v.name.includes('Microsoft') ||
+                                     v.name.includes('Samantha') ||
+                                     v.name.includes('Daniel')))
+    if (enVoice) {
+      utterance.voice = enVoice
+    }
+
     window.speechSynthesis.speak(utterance)
   } else {
     alert('您的浏览器不支持语音合成功能')

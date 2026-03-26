@@ -38,10 +38,25 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   const speakWord = (word) => {
     if (!word) return
     if ('speechSynthesis' in window) {
+      // 停止之前的发音
+      window.speechSynthesis.cancel()
+
       const utterance = new SpeechSynthesisUtterance(word)
       utterance.lang = 'en-US'
-      utterance.rate = 0.9
+      utterance.rate = 1  // 正常语速
       utterance.pitch = 1
+      utterance.volume = 1  // 最大音量
+
+      // 尝试获取更好的语音
+      const voices = window.speechSynthesis.getVoices()
+      const enVoice = voices.find(v => v.lang.includes('en-US') && (v.name.includes('Google') ||
+                                     v.name.includes('Microsoft') ||
+                                     v.name.includes('Samantha') ||
+                                     v.name.includes('Daniel')))
+      if (enVoice) {
+        utterance.voice = enVoice
+      }
+
       window.speechSynthesis.speak(utterance)
     } else {
       alert('您的浏览器不支持语音合成功能')
@@ -557,8 +572,8 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
           {mode === 'learn' ? (
             // 学习模式：显示单词、音标、释义、例句
             <>
-              <div style={{ marginBottom: '24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
+              <div style={{ marginBottom: '24px', textAlign: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '12px' }}>
                   <h1 style={{
                     fontSize: '56px',
                     fontWeight: '800',
