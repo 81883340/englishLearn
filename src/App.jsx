@@ -5,26 +5,38 @@ import Home from './components/Home'
 import Study from './components/Study'
 import WordLibrary from './components/WordLibrary'
 import Badges from './components/Badges'
-import MistakeBook from './components/MistakeBook'
+import MistakeBook from './components/mistakeBook'
 import SpacedRepetition from './components/SpacedRepetition'
 import './App.css'
 
+// 安全地从 localStorage 读取数据，带错误处理
+const safeLoadFromStorage = (key, defaultValue) => {
+  try {
+    const saved = localStorage.getItem(key)
+    if (!saved) return defaultValue
+    const parsed = JSON.parse(saved)
+    return parsed
+  } catch (error) {
+    console.error(`Failed to load ${key} from storage:`, error)
+    localStorage.removeItem(key) // 清除损坏的数据
+    return defaultValue
+  }
+}
+
 function App() {
   const [currentPage, setCurrentPage] = useState('home')
-  const [progress, setProgress] = useState(() => {
-    const saved = localStorage.getItem('englishProgress')
-    return saved ? JSON.parse(saved) : {
+  const [progress, setProgress] = useState(() =>
+    safeLoadFromStorage('englishProgress', {
       totalLearned: 0,
       correctAnswers: 0,
       wrongAnswers: 0,
       streak: 0,
       lastStudyDate: null,
       badges: []
-    }
-  })
-  const [wordLibrary, setWordLibrary] = useState(() => {
-    const saved = localStorage.getItem('wordLibrary')
-    return saved ? JSON.parse(saved) : [
+    })
+  )
+  const [wordLibrary, setWordLibrary] = useState(() =>
+    safeLoadFromStorage('wordLibrary', [
       { id: 1, word: 'hello', meaning: '你好', example: 'Hello, how are you?' },
       { id: 2, word: 'world', meaning: '世界', example: 'The world is beautiful.' },
       { id: 3, word: 'learning', meaning: '学习', example: 'Learning is a lifelong process.' },
@@ -35,18 +47,16 @@ function App() {
       { id: 8, word: 'platform', meaning: '平台', example: 'This is a great learning platform.' },
       { id: 9, word: 'progress', meaning: '进步', example: 'I made good progress today.' },
       { id: 10, word: 'success', meaning: '成功', example: 'Success comes from hard work.' }
-    ]
-  })
+    ])
+  )
 
-  const [learnedWords, setLearnedWords] = useState(() => {
-    const saved = localStorage.getItem('learnedWords')
-    return saved ? JSON.parse(saved) : []
-  })
+  const [learnedWords, setLearnedWords] = useState(() =>
+    safeLoadFromStorage('learnedWords', [])
+  )
 
-  const [mistakeBook, setMistakeBook] = useState(() => {
-    const saved = localStorage.getItem('mistakeBook')
-    return saved ? JSON.parse(saved) : []
-  })
+  const [mistakeBook, setMistakeBook] = useState(() =>
+    safeLoadFromStorage('mistakeBook', [])
+  )
 
   const badgeDefinitions = [
     { id: 'first_word', name: '初学者', description: '完成第一个单词', icon: '🌟', condition: (p) => p.totalLearned >= 1 },
@@ -59,20 +69,37 @@ function App() {
     { id: 'expert', name: '专家', description: '正确率达到90%', icon: '⭐', condition: (p) => p.correctAnswers > 0 && p.correctAnswers / (p.correctAnswers + p.wrongAnswers) >= 0.9 }
   ]
 
+  // 安全地保存到 localStorage，避免不必要的写入
   useEffect(() => {
-    localStorage.setItem('wordLibrary', JSON.stringify(wordLibrary))
+    try {
+      localStorage.setItem('wordLibrary', JSON.stringify(wordLibrary))
+    } catch (error) {
+      console.error('Failed to save wordLibrary:', error)
+    }
   }, [wordLibrary])
 
   useEffect(() => {
-    localStorage.setItem('learnedWords', JSON.stringify(learnedWords))
+    try {
+      localStorage.setItem('learnedWords', JSON.stringify(learnedWords))
+    } catch (error) {
+      console.error('Failed to save learnedWords:', error)
+    }
   }, [learnedWords])
 
   useEffect(() => {
-    localStorage.setItem('mistakeBook', JSON.stringify(mistakeBook))
+    try {
+      localStorage.setItem('mistakeBook', JSON.stringify(mistakeBook))
+    } catch (error) {
+      console.error('Failed to save mistakeBook:', error)
+    }
   }, [mistakeBook])
 
   useEffect(() => {
-    localStorage.setItem('englishProgress', JSON.stringify(progress))
+    try {
+      localStorage.setItem('englishProgress', JSON.stringify(progress))
+    } catch (error) {
+      console.error('Failed to save progress:', error)
+    }
   }, [progress])
 
   const updateProgress = (newProgress) => {
@@ -83,8 +110,9 @@ function App() {
 
   const checkBadges = (currentProgress) => {
     badgeDefinitions.forEach(badge => {
-      if (!progress.badges.includes(badge.id) && badge.condition(currentProgress)) {
-        const newBadges = [...progress.badges, badge.id]
+      // 修复：使用 currentProgress.badges 而不是 progress.badges (闭包问题)
+      if (!currentProgress.badges.includes(badge.id) && badge.condition(currentProgress)) {
+        const newBadges = [...currentProgress.badges, badge.id]
         updateProgress({ badges: newBadges })
         toast.success(`🎉 恭喜获得徽章: ${badge.name}!`)
         setTimeout(() => {
@@ -112,32 +140,57 @@ function App() {
     toast.success('备份成功！')
   }
 
+  // 验证备份文件的数据结构
+  const isValidBackupData = (data) => {
+    return (
+      data &&
+      typeof data === 'object' &&
+      data.progress &&
+      typeof data.progress === 'object' &&
+      typeof data.progress.totalLearned === 'number' &&
+      Array.isArray(data.learnedWords) &&
+      Array.isArray(data.wordLibrary)
+    )
+  }
+
   const handleRestoreProgress = () => {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = '.json'
     input.onchange = (e) => {
       const file = e.target.files[0]
+      if (!file) return
+      
       const reader = new FileReader()
       reader.onload = (event) => {
         try {
           const data = JSON.parse(event.target.result)
-          if (data.progress && data.learnedWords && data.wordLibrary) {
-            if (confirm(`确定要恢复 ${data.backupDate ? new Date(data.backupDate).toLocaleDateString() : ''} 的备份吗？当前数据将被覆盖。`)) {
-              setProgress(data.progress)
-              setLearnedWords(data.learnedWords)
-              setWordLibrary(data.wordLibrary)
-              if (data.mistakeBook) {
-                setMistakeBook(data.mistakeBook)
-              }
-              toast.success('恢复成功！')
-            }
-          } else {
-            toast.error('备份文件格式错误')
+          
+          // 使用验证函数检查数据完整性
+          if (!isValidBackupData(data)) {
+            toast.error('备份文件格式错误或数据不完整')
+            return
           }
+          
+          const backupDate = data.backupDate ? new Date(data.backupDate).toLocaleDateString() : '未知日期'
+          if (!confirm(`确定要恢复 ${backupDate} 的备份吗？当前数据将被覆盖。`)) {
+            return
+          }
+          
+          // 恢复数据
+          setProgress(data.progress)
+          setLearnedWords(data.learnedWords)
+          setWordLibrary(data.wordLibrary)
+          setMistakeBook(data.mistakeBook || [])
+          
+          toast.success('恢复成功！')
         } catch (error) {
+          console.error('Restore error:', error)
           toast.error('备份文件格式错误')
         }
+      }
+      reader.onerror = () => {
+        toast.error('读取文件失败')
       }
       reader.readAsText(file)
     }
