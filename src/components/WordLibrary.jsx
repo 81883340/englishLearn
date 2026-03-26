@@ -2670,13 +2670,21 @@ const getChineseMeaning = async (word) => {
 }
 
 function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
-  const [newWord, setNewWord] = useState({ word: '', meaning: '', example: '', phonetic: '' })
+  const [newWord, setNewWord] = useState({ word: '', meaning: '', example: '', phonetic: '', bookName: '默认词本' })
   const [editingId, setEditingId] = useState(null)
-  const [editingWord, setEditingWord] = useState({ word: '', meaning: '', example: '', phonetic: '' })
+  const [editingWord, setEditingWord] = useState({ word: '', meaning: '', example: '', phonetic: '', bookName: '默认词本' })
   const [searchTerm, setSearchTerm] = useState('')
   const [showAddForm, setShowAddForm] = useState(false)
   const [isAutoFetching, setIsAutoFetching] = useState(false)
   const [autoFetchProgress, setAutoFetchProgress] = useState({ current: 0, total: 0 })
+  const [selectedWords, setSelectedWords] = useState([])
+  const [currentBook, setCurrentBook] = useState('全部词本')
+  const [books, setBooks] = useState(() => {
+    const saved = localStorage.getItem('wordBooks')
+    return saved ? JSON.parse(saved) : ['默认词本']
+  })
+  const [showBookModal, setShowBookModal] = useState(false)
+  const [newBookName, setNewBookName] = useState('')
 
   // 自动获取单词信息
   const handleAutoFetch = async (wordText) => {
@@ -2783,11 +2791,12 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
       word: newWord.word.trim().toLowerCase(),
       meaning: newWord.meaning.trim(),
       example: newWord.example.trim() || `${newWord.word} - example sentence`,
-      phonetic: newWord.phonetic || ''
+      phonetic: newWord.phonetic || '',
+      bookName: newWord.bookName || '默认词本'
     }
 
     setWordLibrary([...wordLibrary, word])
-    setNewWord({ word: '', meaning: '', example: '', phonetic: '' })
+    setNewWord({ word: '', meaning: '', example: '', phonetic: '', bookName: currentBook === '全部词本' ? '默认词本' : currentBook })
     setShowAddForm(false)
   }
 
@@ -2888,10 +2897,10 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
   }
 
   const handleExport = () => {
-    // 导出 CSV 格式（包含音标）
-    const csvHeader = 'word,meaning,example,phonetic\n'
-    const csvContent = wordLibrary.map(w =>
-      `"${w.word}","${w.meaning}","${w.example.replace(/"/g, '""')}","${(w.phonetic || '').replace(/"/g, '""')}"`
+    const bookWords = wordLibrary.filter(w => currentBook === '全部词本' || w.bookName === currentBook)
+    const csvHeader = 'word,meaning,example,phonetic,bookName\n'
+    const csvContent = bookWords.map(w =>
+      `"${w.word}","${w.meaning}","${w.example.replace(/"/g, '""')}","${(w.phonetic || '').replace(/"/g, '""')}","${(w.bookName || '').replace(/"/g, '""')}"`
     ).join('\n')
     const csvData = csvHeader + csvContent
 
@@ -2899,15 +2908,73 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
     const url = URL.createObjectURL(dataBlob)
     const link = document.createElement('a')
     link.href = url
-    link.download = 'word-library.csv'
+    link.download = `${currentBook}-${new Date().toLocaleDateString()}.csv`
     link.click()
     URL.revokeObjectURL(url)
   }
 
-  const filteredWords = wordLibrary.filter(w =>
-    w.word.includes(searchTerm.toLowerCase()) ||
-    w.meaning.includes(searchTerm)
-  )
+  useEffect(() => {
+    localStorage.setItem('wordBooks', JSON.stringify(books))
+  }, [books])
+
+  const filteredWords = wordLibrary.filter(w => {
+    const bookMatch = currentBook === '全部词本' || w.bookName === currentBook
+    const searchMatch = w.word.includes(searchTerm.toLowerCase()) ||
+                       w.meaning.includes(searchTerm)
+    return bookMatch && searchMatch
+  })
+
+  const handleDeleteSelected = () => {
+    if (selectedWords.length === 0) {
+      alert('请选择要删除的单词')
+      return
+    }
+
+    if (confirm(`确定要删除选中的 ${selectedWords.length} 个单词吗？`)) {
+      setWordLibrary(wordLibrary.filter(w => !selectedWords.includes(w.id)))
+      setSelectedWords([])
+      alert(`成功删除 ${selectedWords.length} 个单词`)
+    }
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedWords.length === filteredWords.length) {
+      setSelectedWords([])
+    } else {
+      setSelectedWords(filteredWords.map(w => w.id))
+    }
+  }
+
+  const handleAddBook = () => {
+    if (!newBookName.trim()) {
+      alert('请输入词本名称')
+      return
+    }
+
+    if (books.includes(newBookName)) {
+      alert('词本名称已存在')
+      return
+    }
+
+    setBooks([...books, newBookName])
+    setNewBookName('')
+    setShowBookModal(false)
+    alert('词本创建成功')
+  }
+
+  const handleDeleteBook = () => {
+    if (currentBook === '全部词本' || currentBook === '默认词本') {
+      alert('不能删除默认词本')
+      return
+    }
+
+    if (confirm(`确定要删除词本"${currentBook}"吗？该词本中的所有单词也将被删除。`)) {
+      setWordLibrary(wordLibrary.filter(w => w.bookName !== currentBook))
+      setBooks(books.filter(b => b !== currentBook))
+      setCurrentBook('全部词本')
+      alert('词本已删除')
+    }
+  }
 
   return (
     <div className="container fade-in">
@@ -2945,6 +3012,11 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
           <button className="btn btn-secondary" onClick={handleExport}>
             📤 导出词库 (CSV)
           </button>
+          {selectedWords.length > 0 && (
+            <button className="btn btn-danger" onClick={handleDeleteSelected}>
+              删除选中 ({selectedWords.length})
+            </button>
+          )}
           <input
             type="text"
             className="input"
@@ -2953,6 +3025,45 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{ flex: 1, minWidth: '200px' }}
           />
+        </div>
+
+        <div style={{
+          display: 'flex',
+          gap: '12px',
+          marginBottom: '20px',
+          flexWrap: 'wrap',
+          alignItems: 'center'
+        }}>
+          <label style={{ fontSize: '14px', color: 'var(--gray)', fontWeight: '500' }}>
+            词本:
+          </label>
+          <select
+            className="input"
+            value={currentBook}
+            onChange={(e) => setCurrentBook(e.target.value)}
+            style={{ width: 'auto' }}
+          >
+            <option value="全部词本">全部词本</option>
+            {books.map(book => (
+              <option key={book} value={book}>{book}</option>
+            ))}
+          </select>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowBookModal(true)}
+            style={{ padding: '8px 16px', fontSize: '14px' }}
+          >
+            + 新建词本
+          </button>
+          {currentBook !== '全部词本' && currentBook !== '默认词本' && (
+            <button
+              className="btn btn-danger"
+              onClick={handleDeleteBook}
+              style={{ padding: '8px 16px', fontSize: '14px' }}
+            >
+              🗑️ 删除词本
+            </button>
+          )}
         </div>
 
         {isAutoFetching && (
@@ -2980,8 +3091,66 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
           fontSize: '14px'
         }}>
           <span>总单词数: {wordLibrary.length}</span>
-          <span>搜索结果: {filteredWords.length}</span>
+          <span>当前词本: {filteredWords.length}</span>
+          <span>已选: {selectedWords.length}</span>
         </div>
+
+        {showBookModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div className="card" style={{ maxWidth: '400px', width: '90%' }}>
+              <h3 style={{
+                fontSize: '20px',
+                fontWeight: '700',
+                marginBottom: '20px',
+                color: 'var(--dark)'
+              }}>
+                创建新词本
+              </h3>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: '500',
+                  color: 'var(--dark)'
+                }}>
+                  词本名称
+                </label>
+                <input
+                  type="text"
+                  className="input"
+                  value={newBookName}
+                  onChange={(e) => setNewBookName(e.target.value)}
+                  placeholder="例如: 四级词汇"
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button className="btn btn-primary" onClick={handleAddBook}>
+                  创建
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowBookModal(false)
+                    setNewBookName('')
+                  }}
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {showAddForm && (
           <div style={{
@@ -3114,6 +3283,24 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
       </div>
 
       <div className="card">
+        <div style={{
+          marginBottom: '16px',
+          paddingBottom: '16px',
+          borderBottom: '1px solid #e5e7eb',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <input
+            type="checkbox"
+            checked={selectedWords.length === filteredWords.length && filteredWords.length > 0}
+            onChange={toggleSelectAll}
+          />
+          <span style={{ fontSize: '14px', color: 'var(--gray)' }}>
+            全选 ({filteredWords.length})
+          </span>
+        </div>
+
         <div style={{ overflowX: 'auto' }}>
           <table style={{
             width: '100%',
@@ -3125,6 +3312,9 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
                 borderBottom: '2px solid var(--gray)',
                 textAlign: 'left'
               }}>
+                <th style={{ padding: '16px', fontWeight: '700', color: 'var(--dark)', width: '50px', textAlign: 'center' }}>
+                  选择
+                </th>
                 <th style={{ padding: '16px', fontWeight: '700', color: 'var(--dark)', minWidth: '120px' }}>
                   单词
                 </th>
@@ -3133,6 +3323,9 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
                 </th>
                 <th style={{ padding: '16px', fontWeight: '700', color: 'var(--dark)', minWidth: '150px' }}>
                   释义
+                </th>
+                <th style={{ padding: '16px', fontWeight: '700', color: 'var(--dark)', minWidth: '100px' }}>
+                  词本
                 </th>
                 <th style={{ padding: '16px', fontWeight: '700', color: 'var(--dark)', minWidth: '200px' }}>
                   例句
@@ -3159,6 +3352,19 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
                 >
                   {editingId === word.id ? (
                     <>
+                      <td style={{ padding: '16px', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedWords.includes(word.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedWords([...selectedWords, word.id])
+                            } else {
+                              setSelectedWords(selectedWords.filter(id => id !== word.id))
+                            }
+                          }}
+                        />
+                      </td>
                       <td style={{ padding: '16px' }}>
                         <input
                           type="text"
@@ -3213,7 +3419,7 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
                             style={{ padding: '6px 12px', fontSize: '12px' }}
                             onClick={() => {
                               setEditingId(null)
-                              setEditingWord({ word: '', meaning: '', example: '', phonetic: '' })
+                              setEditingWord({ word: '', meaning: '', example: '', phonetic: '', bookName: '默认词本' })
                             }}
                           >
                             取消
@@ -3223,6 +3429,19 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
                     </>
                   ) : (
                     <>
+                      <td style={{ padding: '16px', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedWords.includes(word.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedWords([...selectedWords, word.id])
+                            } else {
+                              setSelectedWords(selectedWords.filter(id => id !== word.id))
+                            }
+                          }}
+                        />
+                      </td>
                       <td style={{ padding: '16px' }}>
                         <span style={{
                           fontSize: '16px',
@@ -3237,6 +3456,18 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
                       </td>
                       <td style={{ padding: '16px', color: 'var(--dark)', fontWeight: '500' }}>
                         {word.meaning}
+                      </td>
+                      <td style={{ padding: '16px' }}>
+                        <span style={{
+                          fontSize: '12px',
+                          padding: '2px 8px',
+                          background: 'rgba(99, 102, 241, 0.1)',
+                          color: 'var(--primary)',
+                          borderRadius: '4px',
+                          fontWeight: '500'
+                        }}>
+                          {word.bookName || '默认词本'}
+                        </span>
                       </td>
                       <td style={{ padding: '16px', color: 'var(--gray)', fontStyle: 'italic' }}>
                         "{word.example}"

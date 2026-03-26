@@ -1,7 +1,6 @@
 import React from 'react'
-import toast from 'react-hot-toast'
 
-function Home({ progress, wordLibrary, setCurrentPage, handleBackupProgress, handleRestoreProgress }) {
+function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackupProgress, handleRestoreProgress }) {
   const accuracy = progress.correctAnswers + progress.wrongAnswers > 0
     ? Math.round((progress.correctAnswers / (progress.correctAnswers + progress.wrongAnswers)) * 100)
     : 0
@@ -30,6 +29,18 @@ function Home({ progress, wordLibrary, setCurrentPage, handleBackupProgress, han
             onClick={() => setCurrentPage('library')}
           >
             词库管理
+          </button>
+          <button
+            className={`nav-link`}
+            onClick={() => setCurrentPage('review')}
+          >
+            复习
+          </button>
+          <button
+            className={`nav-link`}
+            onClick={() => setCurrentPage('mistake')}
+          >
+            错词本
           </button>
           <button
             className={`nav-link`}
@@ -127,6 +138,11 @@ function Home({ progress, wordLibrary, setCurrentPage, handleBackupProgress, han
             <div className="stat-label">词库数量</div>
           </div>
           <div className="stat-card">
+            <div className="stat-icon">❌</div>
+            <div className="stat-value">{mistakeBook.length}</div>
+            <div className="stat-label">错词数量</div>
+          </div>
+          <div className="stat-card">
             <div className="stat-icon">🎯</div>
             <div className="stat-value">{accuracy}%</div>
             <div className="stat-label">正确率</div>
@@ -162,6 +178,36 @@ function Home({ progress, wordLibrary, setCurrentPage, handleBackupProgress, han
           </h3>
           <p style={{ color: 'var(--gray)', fontSize: '14px', marginBottom: '16px' }}>
             添加、编辑、导入导出单词
+          </p>
+        </div>
+
+        <div className="card" style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => setCurrentPage('review')}>
+          <div style={{ fontSize: '50px', marginBottom: '16px' }}>🧠</div>
+          <h3 style={{
+            fontSize: '20px',
+            fontWeight: '700',
+            marginBottom: '8px',
+            color: 'var(--dark)'
+          }}>
+            遗忘曲线复习
+          </h3>
+          <p style={{ color: 'var(--gray)', fontSize: '14px', marginBottom: '16px' }}>
+            智能复习，记忆更牢固
+          </p>
+        </div>
+
+        <div className="card" style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => setCurrentPage('mistake')}>
+          <div style={{ fontSize: '50px', marginBottom: '16px' }}>❌</div>
+          <h3 style={{
+            fontSize: '20px',
+            fontWeight: '700',
+            marginBottom: '8px',
+            color: 'var(--dark)'
+          }}>
+            错词本
+          </h3>
+          <p style={{ color: 'var(--gray)', fontSize: '14px', marginBottom: '16px' }}>
+            查看和整理错词 ({mistakeBook.length})
           </p>
         </div>
 

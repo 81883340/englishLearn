@@ -22,7 +22,7 @@ const triggerConfetti = () => {
   }
 }
 
-function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, progress, setCurrentPage }) {
+function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, progress, setCurrentPage, mistakeBook, setMistakeBook }) {
   const [mode, setMode] = useState('learn') // 'learn' | 'exam'
   const [currentWord, setCurrentWord] = useState(null)
   const [currentWordIndex, setCurrentWordIndex] = useState(0)
@@ -109,14 +109,45 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
 
       triggerConfetti()
     } else {
-      // 答错
+      // 答错 - 自动加入单词本
       setShowResult('wrong')
       updateProgress({
         wrongAnswers: progress.wrongAnswers + 1,
         streak: 0
       })
+
+      // 自动加入单词本
+      const existingMistake = mistakeBook.find(m => m.word === currentWord.word)
+      if (existingMistake) {
+        // 更新已有错词
+        setMistakeBook(mistakeBook.map(m =>
+          m.word === currentWord.word
+            ? {
+                ...m,
+                wrongCount: m.wrongCount + 1,
+                wrongDate: new Date().toISOString()
+              }
+            : m
+        ))
+      } else {
+        // 添加新错词
+        const nextReviewDate = new Date()
+        nextReviewDate.setDate(nextReviewDate.getDate() + 1)
+
+        setMistakeBook([...mistakeBook, {
+          id: Date.now(),
+          word: currentWord.word,
+          meaning: currentWord.meaning,
+          example: currentWord.example,
+          phonetic: currentWord.phonetic || '',
+          wrongCount: 1,
+          wrongDate: new Date().toISOString(),
+          nextReviewDate: nextReviewDate.toISOString(),
+          repetitionLevel: 0
+        }])
+      }
     }
-  }, [currentWord, userInput, progress, learnedWords, updateProgress, setLearnedWords])
+  }, [currentWord, userInput, progress, learnedWords, updateProgress, setLearnedWords, mistakeBook, setMistakeBook])
 
   // 物理键盘处理 - 使用 useCallback 避免频繁重建
   const handlePhysicalKeyboard = useCallback((e) => {
