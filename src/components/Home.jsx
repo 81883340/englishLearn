@@ -33,21 +33,31 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
           </button>
           <button
             className={`nav-link`}
-            onClick={() => setCurrentPage('library')}
-          >
-            词库管理
-          </button>
-          <button
-            className={`nav-link`}
             onClick={() => setCurrentPage('review')}
           >
             复习
           </button>
           <button
             className={`nav-link`}
+            onClick={() => setCurrentPage('library')}
+          >
+            词库管理
+          </button>
+          <button
+            className={`nav-link`}
             onClick={() => setCurrentPage('mistake')}
           >
             错词本
+          </button>
+          <button
+            className={`nav-link`}
+            onClick={handleCheckIn}
+            style={{
+              background: isCheckedInToday ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
+              border: isCheckedInToday ? '2px solid var(--primary)' : 'none'
+            }}
+          >
+            {isCheckedInToday ? '✓ 已打卡' : '📅 每日打卡'}
           </button>
         </div>
       </nav>
@@ -73,8 +83,11 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
       </div>
 
       <div style={{
-        maxWidth: '600px',
+        maxWidth: '900px',
         margin: '0 auto 60px',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+        gap: '20px',
         textAlign: 'center'
       }}>
         <button
@@ -115,6 +128,45 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
             </div>
           </div>
         </button>
+
+        <button
+          className="btn btn-primary"
+          onClick={() => setCurrentPage('review')}
+          style={{
+            width: '100%',
+            padding: '28px 40px',
+            fontSize: '22px',
+            fontWeight: '700',
+            borderRadius: '20px',
+            background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+            border: '3px solid #a78bfa',
+            boxShadow: '0 10px 40px rgba(99, 102, 241, 0.5)',
+            transition: 'all 0.3s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '16px',
+            color: 'white'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.transform = 'translateY(-6px)'
+            e.target.style.boxShadow = '0 15px 50px rgba(99, 102, 241, 0.6)'
+            e.target.style.background = 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)'
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = 'translateY(0)'
+            e.target.style.boxShadow = '0 10px 40px rgba(99, 102, 241, 0.5)'
+            e.target.style.background = 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)'
+          }}
+        >
+          <span style={{ fontSize: '40px', filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))' }}>🧠</span>
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ textShadow: '0 2px 4px rgba(0, 0, 0, 0.2)' }}>遗忘曲线复习</div>
+            <div style={{ fontSize: '14px', fontWeight: '500', opacity: 0.95, textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)' }}>
+              智能复习，记忆更牢固
+            </div>
+          </div>
+        </button>
       </div>
 
       <div className="card">
@@ -125,7 +177,7 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
           marginBottom: '30px',
           textAlign: 'center'
         }}>
-          学习进度
+          学习进度 & 成就
         </h2>
         <div className="stats-grid">
           <div className="stat-card">
@@ -153,20 +205,6 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
             <div className="stat-value">{progress.streak}</div>
             <div className="stat-label">连续正确</div>
           </div>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginTop: '30px' }}>
-        <h2 style={{
-          fontSize: '24px',
-          fontWeight: '700',
-          color: 'var(--dark)',
-          marginBottom: '30px',
-          textAlign: 'center'
-        }}>
-          成就统计
-        </h2>
-        <div className="stats-grid">
           <div className="stat-card">
             <div className="stat-icon">🏆</div>
             <div className="stat-value">{progress.badges?.length || 0}</div>
@@ -182,74 +220,121 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
             <div className="stat-value">{badgeDefinitions?.length > 0 ? Math.round(((progress.badges?.length || 0) / badgeDefinitions.length) * 100) : 0}%</div>
             <div className="stat-label">完成度</div>
           </div>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginTop: '30px' }}>
-        <h2 style={{
-          fontSize: '24px',
-          fontWeight: '700',
-          color: 'var(--dark)',
-          marginBottom: '30px',
-          textAlign: 'center'
-        }}>
-          每日学习 & 积分
-        </h2>
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon">🎯</div>
-            <div className="stat-value">{dailyGoal}</div>
-            <div className="stat-label">每日目标</div>
-          </div>
           <div className="stat-card">
             <div className="stat-icon">⭐</div>
             <div className="stat-value">{points}</div>
             <div className="stat-label">我的积分</div>
           </div>
-          <div className="stat-card"
-            style={{ cursor: 'pointer', transition: 'all 0.3s ease' }}
-            onClick={() => setShowGoalModal(true)}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)'
-              e.currentTarget.style.boxShadow = '0 8px 24px rgba(99, 102, 241, 0.3)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)'
-              e.currentTarget.style.boxShadow = 'none'
-            }}
-          >
-            <div className="stat-icon">⚙️</div>
-            <div className="stat-value">设置</div>
-            <div className="stat-label">调整目标</div>
-          </div>
         </div>
         <div style={{
           marginTop: '20px',
-          textAlign: 'center'
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '12px'
         }}>
+          <div style={{
+            textAlign: 'center',
+            padding: '12px 24px',
+            background: 'rgba(99, 102, 241, 0.05)',
+            borderRadius: '8px',
+            fontSize: '14px',
+            color: 'var(--dark)',
+            fontWeight: '500'
+          }}>
+            今日目标：<span style={{ color: 'var(--primary)', fontWeight: '700' }}>{dailyGoal}</span> 个单词
+          </div>
           <button
-            className={`btn ${isCheckedInToday ? 'btn-secondary' : 'btn-primary'}`}
-            onClick={handleCheckIn}
-            disabled={isCheckedInToday}
+            className="btn btn-secondary"
+            onClick={() => setShowGoalModal(true)}
             style={{
-              padding: '12px 32px',
-              fontSize: '16px',
-              fontWeight: '600',
-              borderRadius: '12px',
-              minWidth: '200px',
-              opacity: isCheckedInToday ? 0.6 : 1
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '10px 20px',
+              fontSize: '14px'
             }}
           >
-            {isCheckedInToday ? '✓ 今日已打卡' : '📅 每日打卡'}
+            ⚙️ 设置目标
           </button>
-          <p style={{
-            fontSize: '13px',
-            color: 'var(--gray)',
-            marginTop: '12px'
+        </div>
+      </div>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gap: '20px',
+        marginTop: '30px'
+      }}>
+        <div className="card" style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => setCurrentPage('library')}>
+          <div style={{ fontSize: '50px', marginBottom: '16px' }}>📝</div>
+          <h3 style={{
+            fontSize: '20px',
+            fontWeight: '700',
+            marginBottom: '8px',
+            color: 'var(--dark)'
           }}>
-            {isCheckedInToday ? '明天再来打卡吧！' : '完成学习后记得打卡哦！'}
+            词库管理
+          </h3>
+          <p style={{ color: 'var(--gray)', fontSize: '14px', marginBottom: '16px' }}>
+            添加、编辑、导入导出单词
           </p>
         </div>
+
+        <div className="card" style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => setCurrentPage('mistake')}>
+          <div style={{ fontSize: '50px', marginBottom: '16px' }}>❌</div>
+          <h3 style={{
+            fontSize: '20px',
+            fontWeight: '700',
+            marginBottom: '8px',
+            color: 'var(--dark)'
+          }}>
+            错词本
+          </h3>
+          <p style={{ color: 'var(--gray)', fontSize: '14px', marginBottom: '16px' }}>
+            查看和整理错词 ({mistakeBook.length})
+          </p>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '30px' }}>
+        <h3 style={{
+          fontSize: '18px',
+          fontWeight: '700',
+          color: 'var(--dark)',
+          marginBottom: '20px',
+          textAlign: 'center'
+        }}>
+          数据管理
+        </h3>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '12px'
+        }}>
+          <button
+            className="btn btn-primary"
+            onClick={handleBackupProgress}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            <span>💾</span> 备份进度
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={handleRestoreProgress}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            <span>📥</span> 恢复进度
+          </button>
+        </div>
+        <p style={{
+          fontSize: '12px',
+          color: 'var(--gray)',
+          textAlign: 'center',
+          marginTop: '16px'
+        }}>
+          备份包含学习进度、已学单词和词库数据
+        </p>
       </div>
 
       {/* 设置每日目标弹窗 */}
@@ -327,98 +412,6 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
           </div>
         </div>
       )}
-
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: '20px',
-        marginTop: '30px'
-      }}>
-        <div className="card" style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => setCurrentPage('library')}>
-          <div style={{ fontSize: '50px', marginBottom: '16px' }}>📝</div>
-          <h3 style={{
-            fontSize: '20px',
-            fontWeight: '700',
-            marginBottom: '8px',
-            color: 'var(--dark)'
-          }}>
-            词库管理
-          </h3>
-          <p style={{ color: 'var(--gray)', fontSize: '14px', marginBottom: '16px' }}>
-            添加、编辑、导入导出单词
-          </p>
-        </div>
-
-        <div className="card" style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => setCurrentPage('review')}>
-          <div style={{ fontSize: '50px', marginBottom: '16px' }}>🧠</div>
-          <h3 style={{
-            fontSize: '20px',
-            fontWeight: '700',
-            marginBottom: '8px',
-            color: 'var(--dark)'
-          }}>
-            遗忘曲线复习
-          </h3>
-          <p style={{ color: 'var(--gray)', fontSize: '14px', marginBottom: '16px' }}>
-            智能复习，记忆更牢固
-          </p>
-        </div>
-
-        <div className="card" style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => setCurrentPage('mistake')}>
-          <div style={{ fontSize: '50px', marginBottom: '16px' }}>❌</div>
-          <h3 style={{
-            fontSize: '20px',
-            fontWeight: '700',
-            marginBottom: '8px',
-            color: 'var(--dark)'
-          }}>
-            错词本
-          </h3>
-          <p style={{ color: 'var(--gray)', fontSize: '14px', marginBottom: '16px' }}>
-            查看和整理错词 ({mistakeBook.length})
-          </p>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginTop: '30px' }}>
-        <h3 style={{
-          fontSize: '18px',
-          fontWeight: '700',
-          color: 'var(--dark)',
-          marginBottom: '20px',
-          textAlign: 'center'
-        }}>
-          数据管理
-        </h3>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '12px'
-        }}>
-          <button
-            className="btn btn-primary"
-            onClick={handleBackupProgress}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-          >
-            <span>💾</span> 备份进度
-          </button>
-          <button
-            className="btn btn-secondary"
-            onClick={handleRestoreProgress}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-          >
-            <span>📥</span> 恢复进度
-          </button>
-        </div>
-        <p style={{
-          fontSize: '12px',
-          color: 'var(--gray)',
-          textAlign: 'center',
-          marginTop: '16px'
-        }}>
-          备份包含学习进度、已学单词和词库数据
-        </p>
-      </div>
     </div>
   )
 }
