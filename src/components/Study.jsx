@@ -33,7 +33,6 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   const [hasCheckedAnswer, setHasCheckedAnswer] = useState(false)
   const [todayLearnedCount, setTodayLearnedCount] = useState(0)
   const [sessionLearnedCount, setSessionLearnedCount] = useState(0)
-  const [justSubmitted, setJustSubmitted] = useState(false) // 防止 Enter 后立刻触发 Space
 
   // 使用 ref 来避免闭包问题
   const hasCheckedAnswerRef = useRef(hasCheckedAnswer)
@@ -112,6 +111,14 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setHasCheckedAnswer(false)
   }, [currentWord, getRandomWord])
 
+  // 重置当前单词（用于答错后重新拼写）
+  const resetCurrentWord = useCallback(() => {
+    setUserInput('')
+    setShowResult(null)
+    setShowHint(false)
+    setHasCheckedAnswer(false)
+  }, [])
+
   // 虚拟键盘按键处理（未提交状态）
   const handleKeyPress = useCallback((key) => {
     if (hasCheckedAnswerRef.current) return
@@ -130,7 +137,6 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     if (!currentWord || userInput.length === 0) return
 
     setHasCheckedAnswer(true)
-    setJustSubmitted(true) // 设置"刚提交"锁，防止立即触发下一题
 
     if (userInput.toLowerCase() === currentWord.word.toLowerCase()) {
       // 答对
@@ -179,8 +185,6 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     } else {
       // 答错
       setShowResult('wrong')
-      setUserInput('') // 清空输入框
-
       updateProgress({
         wrongAnswers: progress.wrongAnswers + 1,
         streak: 0
@@ -231,17 +235,17 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
 
     const checked = hasCheckedAnswerRef.current
 
-    // 🚫 刚提交时，阻止立即触发下一题（防抖锁）
-    if (justSubmitted) {
-      setJustSubmitted(false)
-      return
-    }
-
     // 考试模式 - 已检查答案状态
     if (mode === 'exam' && checked) {
-      // 按空格键切换到下一个单词
-      if (key === ' ') {
+      // 回答正确时，按空格键切换到下一个单词
+      if (key === ' ' && showResult === 'correct') {
+        e.preventDefault()
         resetToNextWord()
+      }
+      // 回答错误时，按空格键清空并重新拼写
+      if (key === ' ' && showResult === 'wrong') {
+        e.preventDefault()
+        resetCurrentWord()
       }
       return
     }
@@ -251,15 +255,13 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
       if (!e.ctrlKey && !e.altKey && !e.metaKey &&
           key !== 'control' && key !== 'alt' && key !== 'meta' &&
           key !== 'backspace' && key !== 'tab' && key !== 'escape') {
-        const filteredLibrary = getFilteredWordLibrary()
-        const newIndex = (currentWordIndex + 1) % filteredLibrary.length
+        const newIndex = (currentWordIndex + 1) % wordLibrary.length
         setCurrentWordIndex(newIndex)
-        setCurrentWord(filteredLibrary[newIndex])
+        setCurrentWord(wordLibrary[newIndex])
         setUserInput('')
         setShowResult(null)
         setShowHint(false)
         setHasCheckedAnswer(false)
-        setJustSubmitted(false)
         return
       }
     }
@@ -279,7 +281,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         handleKeyPress(key)
       }
     }
-  }, [mode, currentWordIndex, wordLibrary, handleKeyPress, resetToNextWord, submitAnswer, justSubmitted, getFilteredWordLibrary])
+  }, [mode, currentWordIndex, wordLibrary, handleKeyPress, resetToNextWord, resetCurrentWord, submitAnswer, showResult])
 
   useEffect(() => {
     window.addEventListener('keydown', handlePhysicalKeyboard)
@@ -294,7 +296,6 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setShowResult(null)
     setShowHint(false)
     setHasCheckedAnswer(false)
-    setJustSubmitted(false)
     if (mode === 'exam') {
       // 从考试切换到学习，重置到该词本的第一个单词
       const bookProgress = studyProgress[currentBook] || { lastIndex: 0 }
@@ -314,14 +315,46 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
       wrongAnswers: progress.wrongAnswers + 1,
       streak: 0
     })
-  }, [updateProgress])
+
+    // 考试模式下，自动加入错词本
+    if (mode === 'exam') {
+      const existingMistake = mistakeBook.find(m => m.word === currentWord.word.toLowerCase())
+
+      if (existingMistake) {
+        // 已存在，更新错误次数和时间
+        setMistakeBook(mistakeBook.map(m =>
+          m.word === currentWord.word.toLowerCase()
+            ? {
+                ...m,
+                wrongCount: m.wrongCount + 1,
+                wrongDate: new Date().toISOString(),
+                repetitionLevel: 0
+              }
+            : m
+        ))
+      } else {
+        // 新增错词
+        const newMistake = {
+          id: Date.now(),
+          word: currentWord.word.toLowerCase(),
+          meaning: currentWord.meaning,
+          example: currentWord.example,
+          phonetic: currentWord.phonetic || '',
+          wrongCount: 1,
+          wrongDate: new Date().toISOString(),
+          nextReviewDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          repetitionLevel: 0
+        }
+        setMistakeBook([...mistakeBook, newMistake])
+      }
+    }
+  }, [updateProgress, progress, mode, mistakeBook, setMistakeBook, currentWord])
 
   const nextWord = () => {
     setUserInput('')
     setShowResult(null)
     setShowHint(false)
     setHasCheckedAnswer(false)
-    setJustSubmitted(false)
 
     if (mode === 'learn') {
       const filteredLibrary = getFilteredWordLibrary()
@@ -350,7 +383,6 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setShowResult(null)
     setShowHint(false)
     setHasCheckedAnswer(false)
-    setJustSubmitted(false)
 
     if (mode === 'learn') {
       const filteredLibrary = getFilteredWordLibrary()
@@ -709,9 +741,14 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
               显示答案
             </button>
           )}
-          {mode === 'exam' && hasCheckedAnswer && (
-            <button className="btn btn-primary" onClick={nextWord}>
+          {mode === 'exam' && hasCheckedAnswer && showResult === 'correct' && (
+            <button className="btn btn-primary" onClick={resetToNextWord}>
               下一个单词 (Space)
+            </button>
+          )}
+          {mode === 'exam' && hasCheckedAnswer && showResult === 'wrong' && (
+            <button className="btn btn-primary" onClick={resetCurrentWord}>
+              重新拼写 (Space)
             </button>
           )}
           {mode === 'learn' && (
