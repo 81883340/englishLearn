@@ -191,10 +191,10 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     }
 
     // 学习模式
-    if (mode === 'learn') {
-      if (!e.ctrlKey && !e.altKey && !e.metaKey &&
-          key !== 'control' && key !== 'alt' && key !== 'meta' &&
-          key !== 'backspace' && key !== 'tab' && key !== 'escape') {
+    if (mode === 'learn' && checked) {
+      // 按空格键切换到下一个单词
+      if (key === ' ') {
+        e.preventDefault()
         if (currentWordIndex < todayWords.length - 1) {
           // 还有今日的单词，继续学习
           const newIndex = currentWordIndex + 1
