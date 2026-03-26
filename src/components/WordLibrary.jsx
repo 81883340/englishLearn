@@ -411,6 +411,44 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage, currentBook,
     })
   }
 
+  // CSV解析函数 - 正确处理包含双引号的字段
+  const parseCSVLine = (line) => {
+    const result = []
+    let current = ''
+    let inQuotes = false
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i]
+      const nextChar = line[i + 1]
+
+      if (inQuotes) {
+        if (char === '"' && nextChar === '"') {
+          // 双引号转义
+          current += '"'
+          i++ // 跳过下一个引号
+        } else if (char === '"') {
+          // 结束引号
+          inQuotes = false
+        } else {
+          current += char
+        }
+      } else {
+        if (char === '"') {
+          // 开始引号
+          inQuotes = true
+        } else if (char === ',') {
+          // 字段分隔符
+          result.push(current.trim())
+          current = ''
+        } else {
+          current += char
+        }
+      }
+    }
+    result.push(current.trim())
+    return result
+  }
+
   const handleImport = () => {
     const input = document.createElement('input')
     input.type = 'file'
@@ -426,24 +464,19 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage, currentBook,
 
           // CSV 格式: word,meaning,example
           const lines = content.split('\n').filter(line => line.trim())
-          const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+          const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase())
 
           // 检测列顺序
           const wordIndex = headers.findIndex(h => h.includes('word') || h === '单词')
           const meaningIndex = headers.findIndex(h => h.includes('meaning') || h === '释义' || h === '意思')
-          /**
- * 检查输入字符串是否包含特定关键词或等于特定值
- * @param {string} h - 待检查的字符串
- * @returns {boolean} 如果字符串包含 'example' 或等于 '例句' 则返回 true，否则返回 false
- */
-const exampleIndex = headers.findIndex(h => h.includes('example') || h === '例句')
+          const exampleIndex = headers.findIndex(h => h.includes('example') || h === '例句')
           const phoneticIndex = headers.findIndex(h => h.includes('phonetic') || h === '音标')
 
           // 如果没有表头，默认顺序: word,meaning,example
           const useDefault = wordIndex === -1 && meaningIndex === -1
 
           for (let i = useDefault ? 0 : 1; i < lines.length; i++) {
-            const cols = lines[i].split(',').map(c => c.trim())
+            const cols = parseCSVLine(lines[i])
             const word = useDefault ? cols[0] : cols[wordIndex]
             const meaning = useDefault ? cols[1] : cols[meaningIndex]
             const example = useDefault ? (cols[2] || '') : (exampleIndex >= 0 ? cols[exampleIndex] : '')
@@ -467,6 +500,7 @@ const exampleIndex = headers.findIndex(h => h.includes('example') || h === '例�
             alert('导入失败: 文件中没有找到有效的单词')
           }
         } catch (error) {
+          console.error('CSV导入错误:', error)
           alert('导入失败: 文件格式错误')
         }
       }
