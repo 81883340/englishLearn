@@ -42,12 +42,6 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
           >
             错词本
           </button>
-          <button
-            className={`nav-link`}
-            onClick={() => setCurrentPage('badges')}
-          >
-            徽章成就
-          </button>
         </div>
       </nav>
 
@@ -106,10 +100,10 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
             e.target.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
           }}
         >
-          <span style={{ fontSize: '40px', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}>🚀</span>
+          <span style={{ fontSize: '40px', filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))' }}>🚀</span>
           <div style={{ textAlign: 'left' }}>
-            <div style={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>开始学习</div>
-            <div style={{ fontSize: '14px', fontWeight: '500', opacity: 0.95, textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}>
+            <div style={{ textShadow: '0 2px 4px rgba(0, 0, 0, 0.2)' }}>开始学习</div>
+            <div style={{ fontSize: '14px', fontWeight: '500', opacity: 0.95, textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)' }}>
               使用虚拟键盘提升拼写能力
             </div>
           </div>
@@ -151,11 +145,6 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
             <div className="stat-icon">🔥</div>
             <div className="stat-value">{progress.streak}</div>
             <div className="stat-label">连续正确</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">🏅</div>
-            <div className="stat-value">{progress.badges.length}</div>
-            <div className="stat-label">获得徽章</div>
           </div>
         </div>
       </div>
@@ -208,21 +197,6 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
           </h3>
           <p style={{ color: 'var(--gray)', fontSize: '14px', marginBottom: '16px' }}>
             查看和整理错词 ({mistakeBook.length})
-          </p>
-        </div>
-
-        <div className="card" style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => setCurrentPage('badges')}>
-          <div style={{ fontSize: '50px', marginBottom: '16px' }}>🏆</div>
-          <h3 style={{
-            fontSize: '20px',
-            fontWeight: '700',
-            marginBottom: '8px',
-            color: 'var(--dark)'
-          }}>
-            徽章成就
-          </h3>
-          <p style={{ color: 'var(--gray)', fontSize: '14px', marginBottom: '16px' }}>
-            查看所有已获得的徽章
           </p>
         </div>
       </div>

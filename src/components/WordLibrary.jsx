@@ -255,6 +255,8 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
   })
   const [showBookModal, setShowBookModal] = useState(false)
   const [newBookName, setNewBookName] = useState('')
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importTargetBook, setImportTargetBook] = useState('默认词本')
 
   // 自动获取单词信息
   const handleAutoFetch = async (wordText) => {
@@ -300,7 +302,8 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
             word: wordInfo.word,
             meaning: wordInfo.chineseMeaning || wordInfo.englishDefinition,
             example: wordInfo.example,
-            phonetic: wordInfo.phonetic
+            phonetic: wordInfo.phonetic,
+            bookName: importTargetBook
           })
         }
       } catch (error) {
@@ -314,40 +317,37 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage }) {
 
     setWordLibrary([...wordLibrary, ...newWords])
     setIsAutoFetching(false)
-    alert(`成功获取 ${newWords.length} 个单词的信息`)
+    alert(`成功获取 ${newWords.length} 个单词的信息到 "${importTargetBook}"`)
   }
 
   // 从TXT文件批量导入
   const handleTxtImport = () => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = '.txt'
-    input.onchange = (e) => {
-      const file = e.target.files[0]
-      if (!file) return
+    setShowImportModal(true)
+  }
 
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        const content = event.target.result
-        const words = content.split('\n').map(w => w.trim()).filter(w => w)
+  // 执行TXT导入
+  const executeTxtImport = (file) => {
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const content = event.target.result
+      const words = content.split('\n').map(w => w.trim()).filter(w => w)
 
-        if (confirm(`找到 ${words.length} 个单词，是否自动获取释义和例句？\n取消则按原有格式导入`)) {
-          handleBatchAutoFetch(words)
-        } else {
-          // 按原有格式导入（每行一个单词，不获取释义）
-          const newWords = words.map((word, i) => ({
-            id: Date.now() + i,
-            word: word.toLowerCase(),
-            meaning: '',
-            example: ''
-          }))
-          setWordLibrary([...wordLibrary, ...newWords])
-          alert(`成功导入 ${newWords.length} 个单词`)
-        }
+      if (confirm(`找到 ${words.length} 个单词，是否自动获取释义和例句？\n取消则按原有格式导入`)) {
+        handleBatchAutoFetch(words)
+      } else {
+        // 按原有格式导入（每行一个单词，不获取释义）
+        const newWords = words.map((word, i) => ({
+          id: Date.now() + i,
+          word: word.toLowerCase(),
+          meaning: '',
+          example: '',
+          bookName: importTargetBook
+        }))
+        setWordLibrary([...wordLibrary, ...newWords])
+        alert(`成功导入 ${newWords.length} 个单词到 "${importTargetBook}"`)
       }
-      reader.readAsText(file)
     }
-    input.click()
+    reader.readAsText(file)
   }
 
   const handleAddWord = () => {
@@ -669,6 +669,77 @@ const exampleIndex = headers.findIndex(h => h.includes('example') || h === '例�
           <span>当前词本: {filteredWords.length}</span>
           <span>已选: {selectedWords.length}</span>
         </div>
+
+        {showImportModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div className="card" style={{ maxWidth: '400px', width: '90%' }}>
+              <h3 style={{
+                fontSize: '20px',
+                fontWeight: '700',
+                marginBottom: '20px',
+                color: 'var(--dark)'
+              }}>
+                导入TXT到词本
+              </h3>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: '500',
+                  color: 'var(--dark)'
+                }}>
+                  选择词本
+                </label>
+                <select
+                  className="input"
+                  value={importTargetBook}
+                  onChange={(e) => setImportTargetBook(e.target.value)}
+                >
+                  <option value="默认词本">默认词本</option>
+                  {books.filter(b => b !== '默认词本').map(book => (
+                    <option key={book} value={book}>{book}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ marginBottom: '20px' }}>
+                <input
+                  type="file"
+                  accept=".txt"
+                  onChange={(e) => {
+                    const file = e.target.files[0]
+                    if (file) {
+                      executeTxtImport(file)
+                      setShowImportModal(false)
+                    }
+                  }}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowImportModal(false)
+                    setImportTargetBook('默认词本')
+                  }}
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {showBookModal && (
           <div style={{
