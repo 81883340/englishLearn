@@ -218,7 +218,7 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
           </div>
           <div className="stat-card">
             <div className="stat-icon">📊</div>
-            <div className="stat-value">{wordLibrary.length > 0 ? Math.round((progress.totalLearned / wordLibrary.length) * 100) : 0}%</div>
+            <div className="stat-value">{wordLibrary.length > 0 ? Math.min(100, Math.round((progress.totalLearned / wordLibrary.length) * 100)) : 0}%</div>
             <div className="stat-label">词库完成度</div>
           </div>
           <div className="stat-card">
