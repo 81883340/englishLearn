@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
 
-function MistakeBook({ mistakeBook, setMistakeBook, setCurrentPage }) {
+function MistakeBook({ mistakeBook, setMistakeBook, setCurrentPage, currentBook }) {
   const [selectedWords, setSelectedWords] = useState([])
   const [filterType, setFilterType] = useState('all') // 'all', 'today', 'week', 'month'
   const [sortType, setSortType] = useState('date') // 'date', 'word', 'wrongCount'

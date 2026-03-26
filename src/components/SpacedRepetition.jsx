@@ -7,7 +7,8 @@ const SPACED_REPETITION_INTERVALS = [1, 2, 4, 7, 15, 30]
 function SpacedRepetition({
   mistakeBook,
   setMistakeBook,
-  setCurrentPage
+  setCurrentPage,
+  currentBook
 }) {
   const [currentWord, setCurrentWord] = useState(null)
   const [userInput, setUserInput] = useState('')

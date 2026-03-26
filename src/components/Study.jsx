@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import triggerConfetti from '../utils/confetti'
 
-function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, progress, setCurrentPage, mistakeBook, setMistakeBook }) {
+function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, progress, setCurrentPage, mistakeBook, setMistakeBook, currentBook, setCurrentBook }) {
   const [mode, setMode] = useState('learn') // 'learn' | 'exam'
   const [currentWord, setCurrentWord] = useState(null)
   const [currentWordIndex, setCurrentWordIndex] = useState(0)
@@ -10,6 +10,11 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   const [showHint, setShowHint] = useState(false)
   const [pressedKey, setPressedKey] = useState(null)
   const [hasCheckedAnswer, setHasCheckedAnswer] = useState(false)
+  
+  // 根据当前词本过滤单词
+  const filteredWordLibrary = currentBook === '全部词本' 
+    ? wordLibrary 
+    : wordLibrary.filter(w => w.bookName === currentBook)
 
   // 使用 ref 来避免闭包问题
   const hasCheckedAnswerRef = useRef(hasCheckedAnswer)
@@ -18,8 +23,8 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   }, [hasCheckedAnswer])
 
   const getRandomWord = useCallback((excludeId = null) => {
-    const unlearned = wordLibrary.filter(w => !learnedWords.includes(w.id))
-    let pool = unlearned.length > 0 ? unlearned : wordLibrary
+    const unlearned = filteredWordLibrary.filter(w => !learnedWords.includes(w.id))
+    let pool = unlearned.length > 0 ? unlearned : filteredWordLibrary
 
     if (excludeId && pool.length > 1) {
       pool = pool.filter(w => w.id !== excludeId)
@@ -27,19 +32,19 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
 
     const randomIndex = Math.floor(Math.random() * pool.length)
     return pool[randomIndex]
-  }, [wordLibrary, learnedWords])
+  }, [filteredWordLibrary, learnedWords])
 
   // 初始化单词
   useEffect(() => {
-    if (wordLibrary.length > 0) {
+    if (filteredWordLibrary.length > 0) {
       if (mode === 'learn') {
         setCurrentWordIndex(0)
-        setCurrentWord(wordLibrary[0])
+        setCurrentWord(filteredWordLibrary[0])
       } else {
         setCurrentWord(getRandomWord())
       }
     }
-  }, [mode, wordLibrary])
+  }, [mode, filteredWordLibrary])
 
   // 重置到新单词（用于考试模式）
   const resetToNextWord = useCallback(() => {
@@ -264,7 +269,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     return '#e5e7eb'
   }
 
-  if (!currentWord) {
+  if (!currentWord || filteredWordLibrary.length === 0) {
     return (
       <div className="container">
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
@@ -284,7 +289,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     <div className="container fade-in">
       <nav className="navbar">
         <div className="navbar-brand">
-          <span>📚 {mode === 'learn' ? '学习模式' : '考试模式'}</span>
+          <span>📚 {mode === 'learn' ? '学习模式' : '考试模式'} - {currentBook === '全部词本' ? '全部' : currentBook}</span>
         </div>
         <div className="navbar-nav">
           <button

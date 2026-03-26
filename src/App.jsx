@@ -25,6 +25,7 @@ const safeLoadFromStorage = (key, defaultValue) => {
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home')
+  const [currentBook, setCurrentBook] = useState('全部词本')
   const [progress, setProgress] = useState(() =>
     safeLoadFromStorage('englishProgress', {
       totalLearned: 0,
@@ -37,16 +38,16 @@ function App() {
   )
   const [wordLibrary, setWordLibrary] = useState(() =>
     safeLoadFromStorage('wordLibrary', [
-      { id: 1, word: 'hello', meaning: '你好', example: 'Hello, how are you?' },
-      { id: 2, word: 'world', meaning: '世界', example: 'The world is beautiful.' },
-      { id: 3, word: 'learning', meaning: '学习', example: 'Learning is a lifelong process.' },
-      { id: 4, word: 'english', meaning: '英语', example: 'I am learning English.' },
-      { id: 5, word: 'keyboard', meaning: '键盘', example: 'I use a keyboard every day.' },
-      { id: 6, word: 'screen', meaning: '屏幕', example: 'The screen is very bright.' },
-      { id: 7, word: 'modern', meaning: '现代的', example: 'This is a modern design.' },
-      { id: 8, word: 'platform', meaning: '平台', example: 'This is a great learning platform.' },
-      { id: 9, word: 'progress', meaning: '进步', example: 'I made good progress today.' },
-      { id: 10, word: 'success', meaning: '成功', example: 'Success comes from hard work.' }
+      { id: 1, word: 'hello', meaning: '你好', example: 'Hello, how are you?', bookName: '默认词本' },
+      { id: 2, word: 'world', meaning: '世界', example: 'The world is beautiful.', bookName: '默认词本' },
+      { id: 3, word: 'learning', meaning: '学习', example: 'Learning is a lifelong process.', bookName: '默认词本' },
+      { id: 4, word: 'english', meaning: '英语', example: 'I am learning English.', bookName: '默认词本' },
+      { id: 5, word: 'keyboard', meaning: '键盘', example: 'I use a keyboard every day.', bookName: '默认词本' },
+      { id: 6, word: 'screen', meaning: '屏幕', example: 'The screen is very bright.', bookName: '默认词本' },
+      { id: 7, word: 'modern', meaning: '现代的', example: 'This is a modern design.', bookName: '默认词本' },
+      { id: 8, word: 'platform', meaning: '平台', example: 'This is a great learning platform.', bookName: '默认词本' },
+      { id: 9, word: 'progress', meaning: '进步', example: 'I made good progress today.', bookName: '默认词本' },
+      { id: 10, word: 'success', meaning: '成功', example: 'Success comes from hard work.', bookName: '默认词本' }
     ])
   )
 
@@ -206,6 +207,8 @@ function App() {
             wordLibrary={wordLibrary}
             mistakeBook={mistakeBook}
             setCurrentPage={setCurrentPage}
+            currentBook={currentBook}
+            setCurrentBook={setCurrentBook}
             handleBackupProgress={handleBackupProgress}
             handleRestoreProgress={handleRestoreProgress}
           />
@@ -221,6 +224,8 @@ function App() {
             setCurrentPage={setCurrentPage}
             mistakeBook={mistakeBook}
             setMistakeBook={setMistakeBook}
+            currentBook={currentBook}
+            setCurrentBook={setCurrentBook}
           />
         )
       case 'library':
@@ -246,6 +251,8 @@ function App() {
             setMistakeBook={setMistakeBook}
             wordLibrary={wordLibrary}
             setCurrentPage={setCurrentPage}
+            currentBook={currentBook}
+            setCurrentBook={setCurrentBook}
           />
         )
       case 'review':
@@ -255,6 +262,8 @@ function App() {
             mistakeBook={mistakeBook}
             setMistakeBook={setMistakeBook}
             setCurrentPage={setCurrentPage}
+            currentBook={currentBook}
+            setCurrentBook={setCurrentBook}
           />
         )
       default:
@@ -264,6 +273,8 @@ function App() {
             wordLibrary={wordLibrary}
             mistakeBook={mistakeBook}
             setCurrentPage={setCurrentPage}
+            currentBook={currentBook}
+            setCurrentBook={setCurrentBook}
             handleBackupProgress={handleBackupProgress}
             handleRestoreProgress={handleRestoreProgress}
           />

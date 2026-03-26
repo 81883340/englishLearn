@@ -1,6 +1,6 @@
 import React from 'react'
 
-function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackupProgress, handleRestoreProgress }) {
+function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackupProgress, handleRestoreProgress, currentBook, setCurrentBook }) {
   const accuracy = progress.correctAnswers + progress.wrongAnswers > 0
     ? Math.round((progress.correctAnswers / (progress.correctAnswers + progress.wrongAnswers)) * 100)
     : 0
@@ -44,6 +44,33 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
           </button>
         </div>
       </nav>
+
+      {/* 词本选择器 */}
+      <div style={{ textAlign: 'center', marginBottom: '20px', padding: '16px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '12px' }}>
+        <label style={{ fontSize: '14px', color: 'var(--gray)', marginRight: '12px', fontWeight: '500' }}>
+          选择词本：
+        </label>
+        <select
+          value={currentBook}
+          onChange={(e) => setCurrentBook(e.target.value)}
+          style={{ 
+            padding: '8px 16px',
+            borderRadius: '8px',
+            border: '2px solid var(--primary)',
+            fontSize: '16px',
+            color: 'var(--dark)',
+            cursor: 'pointer'
+          }}
+        >
+          <option value="全部词本">全部词本</option>
+          {wordLibrary.filter((w, i, arr) => {
+            const bookName = w.bookName || '默认词本'
+            return arr.findIndex(b => b === bookName) === i
+          }).map((uniqueBook, index) => (
+            <option key={uniqueBook} value={uniqueBook}>{uniqueBook}</option>
+          ))}
+        </select>
+      </div>
 
       <div style={{ marginBottom: '40px' }}>
         <h1 style={{
