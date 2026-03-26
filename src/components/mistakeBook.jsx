@@ -70,77 +70,134 @@ function MistakeBook({ mistakeBook, setMistakeBook, setCurrentPage }) {
     }
   }
 
-  const handleExportPDF = async () => {
-    const jsPDF = (await import('jspdf')).default
-    const doc = new jsPDF()
-
-    let y = 20
-    const pageWidth = doc.internal.pageSize.getWidth()
-    const margin = 20
-    const colWidth = (pageWidth - margin * 3) / printOptions.columns
-
-    doc.setFontSize(20)
-    doc.text('单词本 - 错词复习', margin, y)
-    y += 15
-
-    doc.setFontSize(10)
-    doc.text(`生成日期: ${new Date().toLocaleDateString()}`, margin, y)
-    y += 20
-
+  const handleExportPDF = () => {
+    // 使用浏览器原生打印功能，移除对 jspdf 的依赖
     const wordsToPrint = selectedWords.length > 0
       ? mistakeBook.filter(item => selectedWords.includes(item.id))
       : sortedMistakes
 
-    wordsToPrint.forEach((item, index) => {
-      const colIndex = index % printOptions.columns
-      const x = margin + colIndex * (colWidth + margin)
+    // 创建打印窗口
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      toast.error('无法打开打印窗口，请检查浏览器设置')
+      return
+    }
 
-      if (colIndex === 0 && index > 0) {
-        y += 40
-      }
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>单词本 - 错词复习</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+          }
+          .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+          }
+          .header p {
+            color: #666;
+            font-size: 12px;
+          }
+          .word-grid {
+            display: grid;
+            grid-template-columns: repeat(${printOptions.columns}, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+          }
+          .word-item {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            page-break-inside: avoid;
+          }
+          .word {
+            font-size: 20px;
+            font-weight: bold;
+            color: #6366f1;
+            margin-bottom: 8px;
+          }
+          .phonetic {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+          }
+          .meaning {
+            color: #333;
+            margin-bottom: 8px;
+          }
+          .example {
+            color: #999;
+            font-style: italic;
+            font-size: 12px;
+            margin-bottom: 12px;
+          }
+          .writing-space {
+            border-top: 1px solid #ccc;
+            padding-top: 15px;
+            min-height: 40px;
+            color: #ccc;
+          }
+          .stats {
+            color: #999;
+            font-size: 11px;
+            margin-top: 8px;
+          }
+          @media print {
+            body {
+              padding: 0;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>单词本 - 错词复习</h1>
+          <p>生成日期: ${new Date().toLocaleDateString()} | 共 ${wordsToPrint.length} 个单词</p>
+        </div>
+        <div class="word-grid">
+          ${wordsToPrint.map((item, index) => `
+            <div class="word-item">
+              ${printOptions.showWord ? `<div class="word">${index + 1}. ${item.word}</div>` : ''}
+              ${printOptions.showPhonetic && item.phonetic ? `<div class="phonetic">${item.phonetic}</div>` : ''}
+              ${printOptions.showMeaning && item.meaning ? `<div class="meaning">${item.meaning}</div>` : ''}
+              ${printOptions.showExample && item.example ? `<div class="example">"${item.example}"</div>` : ''}
+              ${printOptions.showWritingSpace ? `<div class="writing-space">默写空间</div>` : ''}
+              <div class="stats">错误 ${item.wrongCount} 次 | ${new Date(item.wrongDate).toLocaleDateString()}</div>
+            </div>
+          `).join('')}
+        </div>
+        <script>
+          window.onload = function() {
+            window.print();
+            window.onafterprint = function() {
+              window.close();
+            };
+          };
+        </script>
+      </body>
+      </html>
+    `
 
-      if (y > 250) {
-        doc.addPage()
-        y = 20
-      }
-
-      doc.setFontSize(14)
-      if (printOptions.showWord) {
-        doc.text(`${index + 1}. ${item.word}`, x, y)
-        y += 8
-      }
-
-      doc.setFontSize(10)
-      if (printOptions.showPhonetic && item.phonetic) {
-        doc.text(item.phonetic, x, y)
-        y += 6
-      }
-
-      if (printOptions.showMeaning && item.meaning) {
-        doc.setFontSize(10)
-        doc.text(item.meaning, x, y)
-        y += 6
-      }
-
-      if (printOptions.showExample && item.example) {
-        doc.setFontSize(8)
-        doc.text(`"${item.example}"`, x, y)
-        y += 6
-      }
-
-      if (printOptions.showWritingSpace) {
-        doc.setDrawColor(200)
-        doc.line(x, y, x + colWidth, y)
-        y += 20
-      }
-
-      if (colIndex === printOptions.columns - 1 || index === wordsToPrint.length - 1) {
-        y += 10
-      }
-    })
-
-    doc.save(`单词本-${new Date().toLocaleDateString()}.pdf`)
-    toast.success('PDF导出成功')
+    printWindow.document.write(printContent)
+    printWindow.document.close()
+    toast.success('已打开打印窗口')
     setShowPrintModal(false)
   }
 
