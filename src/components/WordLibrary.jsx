@@ -300,6 +300,9 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage, currentBook,
   const [importTargetBook, setImportTargetBook] = useState('默认词本')
   const [showTransferModal, setShowTransferModal] = useState(false)
   const [transferTargetBook, setTransferTargetBook] = useState('默认词本')
+  // 分页状态
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20) // 每页显示20个单词
 
   // 自动获取单词信息
   const handleAutoFetch = async (wordText) => {
@@ -576,6 +579,30 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage, currentBook,
     return bookMatch && searchMatch
   })
 
+  // 分页逻辑
+  const totalPages = Math.ceil(filteredWords.length / pageSize) || 1
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = startIndex + pageSize
+  const paginatedWords = filteredWords.slice(startIndex, endIndex)
+
+  // 切换页码
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage)
+    setSelectedWords([])
+  }
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      handlePageChange(currentPage - 1)
+    }
+  }
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      handlePageChange(currentPage + 1)
+    }
+  }
+
   const handleDeleteSelected = () => {
     if (selectedWords.length === 0) {
       alert('请选择要删除的单词')
@@ -803,6 +830,72 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage, currentBook,
           <span>当前词本: {filteredWords.length}</span>
           <span>已选: {selectedWords.length}</span>
         </div>
+
+        {/* 分页控件 */}
+        {totalPages > 1 && (
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            marginBottom: '20px',
+            justifyContent: 'center',
+            alignItems: 'center',
+            flexWrap: 'wrap'
+          }}>
+            <button
+              className="btn btn-secondary"
+              onClick={handlePrevPage}
+              disabled={currentPage === 1}
+              style={{ padding: '8px 16px', fontSize: '14px' }}
+            >
+              ← 上一页
+            </button>
+            <span style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              color: 'var(--dark)'
+            }}>
+              第 {currentPage} / {totalPages} 页
+            </span>
+            <button
+              className="btn btn-secondary"
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages}
+              style={{ padding: '8px 16px', fontSize: '14px' }}
+            >
+              下一页 →
+            </button>
+            <select
+              className="input"
+              value={currentPage}
+              onChange={(e) => handlePageChange(Number(e.target.value))}
+              style={{ width: 'auto', minWidth: '120px' }}
+            >
+              {Array.from({ length: totalPages }, (_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  第 {i + 1} 页
+                </option>
+              ))}
+            </select>
+            <span style={{ fontSize: '12px', color: 'var(--gray)' }}>
+              每页
+            </span>
+            <select
+              className="input"
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              style={{ padding: '6px 10px', fontSize: '13px' }}
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={30}>30</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+            <span style={{ fontSize: '12px', color: 'var(--gray)' }}>
+              个
+            </span>
+          </div>
+        )}
 
         {showImportModal && (
           <div style={{
@@ -1187,7 +1280,7 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage, currentBook,
               </tr>
             </thead>
             <tbody>
-              {filteredWords.map((word) => (
+              {paginatedWords.map((word) => (
                 <tr
                   key={word.id}
                   style={{
@@ -1370,14 +1463,14 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage, currentBook,
                             style={{ padding: '8px 16px', fontSize: '14px', fontWeight: '500' }}
                             onClick={() => startEditing(word)}
                           >
-                            ✏ 编辑
+                            编辑
                           </button>
                           <button
                             className="btn btn-danger"
                             style={{ padding: '8px 16px', fontSize: '14px', fontWeight: '500' }}
                             onClick={() => handleDeleteWord(word.id)}
                           >
-                            🗑 删除
+                            删除
                           </button>
                         </div>
                       </td>
