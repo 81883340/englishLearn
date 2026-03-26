@@ -7,6 +7,7 @@ import WordLibrary from './components/WordLibrary'
 import Badges from './components/Badges'
 import MistakeBook from './components/mistakeBook'
 import SpacedRepetition from './components/SpacedRepetition'
+import MobileExam from './components/MobileExam'
 import './App.css'
 
 // 安全地从 localStorage 读取数据，带错误处理
@@ -386,6 +387,23 @@ function App() {
             setCurrentPage={setCurrentPage}
             currentBook={currentBook}
             setCurrentBook={setCurrentBook}
+          />
+        )
+      case 'mobile-exam':
+        return (
+          <MobileExam
+            wordLibrary={wordLibrary}
+            learnedWords={learnedWords}
+            setLearnedWords={setLearnedWords}
+            updateProgress={updateProgress}
+            progress={progress}
+            setCurrentPage={setCurrentPage}
+            mistakeBook={mistakeBook}
+            setMistakeBook={setMistakeBook}
+            currentBook={currentBook}
+            setPoints={setPoints}
+            dailyGoal={dailyGoal}
+            handleCompleteDailyGoal={handleCompleteDailyGoal}
           />
         )
       default:
