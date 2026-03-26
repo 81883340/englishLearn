@@ -82,9 +82,9 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
 
     const randomIndex = Math.floor(Math.random() * pool.length)
     return pool[randomIndex]
-  }, [wordLibrary, learnedWords, getFilteredWordLibrary])
+  }, [getFilteredWordLibrary, learnedWords])
 
-  // 初始化单词
+  // 初始化单词（仅在模式或词本切换时）
   useEffect(() => {
     const filteredLibrary = getFilteredWordLibrary()
     if (filteredLibrary.length > 0) {
@@ -92,14 +92,15 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         // 获取该词本的学习进度
         const bookProgress = studyProgress[currentBook] || { lastIndex: 0 }
         const startIndex = bookProgress.lastIndex || 0
-
         setCurrentWordIndex(startIndex)
         setCurrentWord(filteredLibrary[startIndex])
       } else {
         setCurrentWord(getRandomWord())
       }
     }
-  }, [mode, wordLibrary, currentBook, studyProgress, getFilteredWordLibrary, getRandomWord])
+    // 注意：只依赖 mode 和 currentBook，避免因 studyProgress 或 learnedWords 变化而重置单词
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, currentBook])
 
   // 重置到新单词（用于考试模式）
   const resetToNextWord = useCallback(() => {
@@ -110,6 +111,14 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setShowHint(false)
     setHasCheckedAnswer(false)
   }, [currentWord, getRandomWord])
+
+  // 重置当前单词（用于答错后重新拼写）
+  const resetCurrentWord = useCallback(() => {
+    setUserInput('')
+    setShowResult(null)
+    setShowHint(false)
+    setHasCheckedAnswer(false)
+  }, [])
 
   // 虚拟键盘按键处理（未提交状态）
   const handleKeyPress = useCallback((key) => {
