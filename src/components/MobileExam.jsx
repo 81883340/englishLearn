@@ -287,7 +287,6 @@ function MobileExam({
 
       {/* 主卡片 */}
       <div className="card" style={{
-        flex: 1,
         display: 'flex',
         flexDirection: 'column',
         padding: '12px',
@@ -296,7 +295,7 @@ function MobileExam({
         {/* 提示信息 */}
         {showHint && !hasCheckedAnswer && (
           <div style={{
-            padding: '8px 10px',
+            padding: '6px 10px',
             background: 'rgba(99, 102, 241, 0.1)',
             borderRadius: '6px',
             marginBottom: '8px'
@@ -311,30 +310,30 @@ function MobileExam({
         )}
 
         {/* 单词释义 */}
-        <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '8px' }}>
           <div style={{
-            fontSize: '16px',
+            fontSize: '15px',
             color: 'var(--primary)',
             fontWeight: '600',
-            marginBottom: '4px',
+            marginBottom: '3px',
             lineHeight: '1.3'
           }}>
             {currentWord.meaning}
           </div>
           {currentWord.phonetic && (
             <div style={{
-              fontSize: '12px',
+              fontSize: '11px',
               color: 'var(--gray)',
               fontFamily: 'Arial, sans-serif',
-              marginBottom: '3px'
+              marginBottom: '2px'
             }}>
               📢 {currentWord.phonetic}
             </div>
           )}
           <div style={{
-            fontSize: '11px',
+            fontSize: '10px',
             color: 'var(--gray)',
-            marginBottom: '8px'
+            marginBottom: '6px'
           }}>
             请拼写这个单词
           </div>
@@ -343,21 +342,21 @@ function MobileExam({
         {/* 输入框 */}
         <div style={{
           position: 'relative',
-          marginBottom: '10px'
+          marginBottom: '8px'
         }}>
           {/* 显示占位符 */}
           <div style={{
             display: 'flex',
-            gap: '3px',
+            gap: '2px',
             justifyContent: 'center',
-            marginBottom: '8px'
+            marginBottom: '6px'
           }}>
             {Array(currentWord.word.length).fill(0).map((_, index) => (
               <div
                 key={index}
                 style={{
-                  width: '24px',
-                  height: '32px',
+                  width: '22px',
+                  height: '28px',
                   borderBottom: `2px solid ${
                     userInput[index]
                       ? showResult === 'correct'
@@ -372,7 +371,7 @@ function MobileExam({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '14px',
+                  fontSize: '13px',
                   fontWeight: '700',
                   color: userInput[index]
                     ? showResult === 'correct'
@@ -407,8 +406,8 @@ function MobileExam({
             disabled={hasCheckedAnswer}
             style={{
               width: '100%',
-              padding: '8px 12px',
-              fontSize: '18px',
+              padding: '6px 10px',
+              fontSize: '16px',
               fontWeight: '600',
               border: `2px solid ${
                 showResult === 'correct' ? '#10b981' :
@@ -432,23 +431,23 @@ function MobileExam({
         {/* 结果反馈 */}
         {showResult === 'correct' && (
           <div style={{
-            padding: '8px 12px',
+            padding: '6px 10px',
             background: 'rgba(16, 185, 129, 0.1)',
             borderRadius: '6px',
-            marginBottom: '10px',
+            marginBottom: '8px',
             animation: 'fade-in 0.3s ease'
           }}>
             <p style={{
-              fontSize: '14px',
+              fontSize: '13px',
               color: '#10b981',
               fontWeight: '600',
-              marginBottom: '3px',
+              marginBottom: '2px',
               textAlign: 'center'
             }}>
               ✓ 回答正确！
             </p>
             <p style={{
-              fontSize: '11px',
+              fontSize: '10px',
               color: 'var(--gray)',
               textAlign: 'center'
             }}>
@@ -459,33 +458,33 @@ function MobileExam({
 
         {showResult === 'wrong' && (
           <div style={{
-            padding: '8px 12px',
+            padding: '6px 10px',
             background: 'rgba(239, 68, 68, 0.1)',
             borderRadius: '6px',
-            marginBottom: '10px',
+            marginBottom: '8px',
             animation: 'fade-in 0.3s ease'
           }}>
             <p style={{
-              fontSize: '14px',
+              fontSize: '13px',
               color: 'var(--danger)',
               fontWeight: '600',
-              marginBottom: '4px',
+              marginBottom: '3px',
               textAlign: 'center'
             }}>
               正确答案是: {currentWord.word}
             </p>
             {currentWord.phonetic && (
               <p style={{
-                fontSize: '11px',
+                fontSize: '10px',
                 color: 'var(--gray)',
                 textAlign: 'center',
-                marginBottom: '3px'
+                marginBottom: '2px'
               }}>
                 音标: {currentWord.phonetic}
               </p>
             )}
             <p style={{
-              fontSize: '10px',
+              fontSize: '9px',
               color: 'var(--gray)',
               fontStyle: 'italic',
               textAlign: 'center'
@@ -509,8 +508,8 @@ function MobileExam({
                 onClick={() => setShowHint(!showHint)}
                 style={{
                   flex: 1,
-                  padding: '8px 12px',
-                  fontSize: '13px',
+                  padding: '7px 10px',
+                  fontSize: '12px',
                   fontWeight: '600'
                 }}
               >
@@ -522,8 +521,8 @@ function MobileExam({
                 disabled={userInput.length === 0}
                 style={{
                   flex: 2,
-                  padding: '8px 12px',
-                  fontSize: '13px',
+                  padding: '7px 10px',
+                  fontSize: '12px',
                   fontWeight: '600',
                   opacity: userInput.length === 0 ? 0.5 : 1
                 }}
@@ -539,8 +538,8 @@ function MobileExam({
                 onClick={() => setShowHint(!showHint)}
                 style={{
                   flex: 1,
-                  padding: '8px 12px',
-                  fontSize: '13px',
+                  padding: '7px 10px',
+                  fontSize: '12px',
                   fontWeight: '600'
                 }}
               >
@@ -551,8 +550,8 @@ function MobileExam({
                 onClick={retryWord}
                 style={{
                   flex: 1,
-                  padding: '8px 12px',
-                  fontSize: '13px',
+                  padding: '7px 10px',
+                  fontSize: '12px',
                   fontWeight: '600'
                 }}
               >
@@ -563,8 +562,8 @@ function MobileExam({
                 onClick={nextWord}
                 style={{
                   flex: 1,
-                  padding: '8px 12px',
-                  fontSize: '13px',
+                  padding: '7px 10px',
+                  fontSize: '12px',
                   fontWeight: '600'
                 }}
               >
