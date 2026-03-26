@@ -512,13 +512,6 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
           </button>
           <button
             className="nav-link"
-            onClick={() => setCurrentPage('mobile-exam')}
-            style={{ fontSize: '13px' }}
-          >
-            📱 移动考试
-          </button>
-          <button
-            className="nav-link"
             onClick={() => setCurrentPage('library')}
             style={{ fontSize: '13px' }}
           >

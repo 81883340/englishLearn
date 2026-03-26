@@ -3,6 +3,7 @@ import toast, { Toaster } from 'react-hot-toast'
 import triggerConfetti from './utils/confetti'
 import Home from './components/Home'
 import Study from './components/Study'
+import StudyAuto from './components/StudyAuto'
 import WordLibrary from './components/WordLibrary'
 import Badges from './components/Badges'
 import MistakeBook from './components/mistakeBook'
@@ -331,7 +332,7 @@ function App() {
         )
       case 'study':
         return (
-          <Study
+          <StudyAuto
             wordLibrary={wordLibrary}
             learnedWords={learnedWords}
             setLearnedWords={setLearnedWords}
