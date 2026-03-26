@@ -64,23 +64,6 @@ function Study({
     return wordLibrary.filter(w => w.bookName === currentBook)
   }, [wordLibrary, currentBook])
 
-  // 获取当前词本应该学习的单词
-  const getTodayStudyWords = useCallback(() => {
-    const filteredLibrary = getFilteredWordLibrary()
-    if (filteredLibrary.length === 0) return []
-    const bookProgress = studyProgress[currentBook] || { lastIndex: 0, learnedIndices: [] }
-    const startIndex = bookProgress.lastIndex || 0
-    const todayNeedCount = dailyGoal - todayLearnedCount
-    if (todayNeedCount <= 0) return []
-
-    const studyWords = []
-    for (let i = 0; i < todayNeedCount && (startIndex + i) < filteredLibrary.length; i++) {
-      const wordIndex = (startIndex + i) % filteredLibrary.length
-      studyWords.push(filteredLibrary[wordIndex])
-    }
-    return studyWords
-  }, [getFilteredWordLibrary, studyProgress, currentBook, dailyGoal, todayLearnedCount])
-
   const getRandomWord = useCallback((excludeId = null) => {
     const filteredLibrary = getFilteredWordLibrary()
     const unlearned = filteredLibrary.filter(w => !learnedWords.includes(w.id))
@@ -107,17 +90,17 @@ function Study({
     }
   }, [mode, wordLibrary, currentBook, studyProgress, getFilteredWordLibrary, getRandomWord])
 
-  // 重置到新单词（仅用于考试模式切换下一题）
+  // 重置到新单词（仅考试模式切换下一题使用）
   const resetToNextWord = useCallback(() => {
     const newWord = getRandomWord(currentWord?.id)
     setCurrentWord(newWord)
-    setUserInput('')           // 重要：清空输入
+    setUserInput('')
     setShowResult(null)
     setShowHint(false)
     setHasCheckedAnswer(false)
   }, [currentWord, getRandomWord])
 
-  // 虚拟键盘按键处理（未提交状态）
+  // 虚拟键盘按键处理
   const handleKeyPress = useCallback((key) => {
     if (hasCheckedAnswerRef.current) return
     if (key === 'BACK') {
@@ -135,13 +118,12 @@ function Study({
 
     setHasCheckedAnswer(true)
 
-    const isCorrect = userInput.toLowerCase() === currentWord.word.toLowerCase()
-
-    if (isCorrect) {
+    if (userInput.toLowerCase() === currentWord.word.toLowerCase()) {
       // 答对
       setShowResult('correct')
       const newStreak = progress.streak + 1
       const newCorrect = progress.correctAnswers + 1
+
       updateProgress({
         totalLearned: progress.totalLearned + 1,
         correctAnswers: newCorrect,
@@ -186,7 +168,7 @@ function Study({
         streak: 0
       })
 
-      // 考试模式下加入错词本
+      // 加入错词本
       if (mode === 'exam') {
         const existingMistake = mistakeBook.find(m => m.word === currentWord.word.toLowerCase())
         if (existingMistake) {
@@ -217,11 +199,10 @@ function Study({
       }
     }
   }, [
-    currentWord, userInput, progress, learnedWords, updateProgress,
-    setLearnedWords, mode, mistakeBook, setMistakeBook, setPoints,
-    todayLearnedCount, setTodayLearnedCount, setSessionLearnedCount,
-    dailyGoal, handleCompleteDailyGoal, currentBook, studyProgress,
-    setStudyProgress, getFilteredWordLibrary
+    currentWord, userInput, progress, learnedWords, updateProgress, setLearnedWords,
+    mode, mistakeBook, setMistakeBook, setPoints, todayLearnedCount,
+    dailyGoal, handleCompleteDailyGoal, currentBook, studyProgress, setStudyProgress,
+    getFilteredWordLibrary
   ])
 
   // 物理键盘处理
@@ -234,21 +215,22 @@ function Study({
 
     // 考试模式 - 已检查答案状态
     if (mode === 'exam' && checked) {
+      // 只有回答正确时，按空格才切换下一题
       if (key === ' ' && showResult === 'correct') {
-        // 只有正确时按空格才切换下一题
         resetToNextWord()
       }
       return
     }
 
-    // 学习模式
+    // 学习模式：任意按键切换下一个单词
     if (mode === 'learn') {
       if (!e.ctrlKey && !e.altKey && !e.metaKey &&
           key !== 'control' && key !== 'alt' && key !== 'meta' &&
           key !== 'backspace' && key !== 'tab' && key !== 'escape') {
-        const newIndex = (currentWordIndex + 1) % wordLibrary.length
+        const filteredLibrary = getFilteredWordLibrary()
+        const newIndex = (currentWordIndex + 1) % filteredLibrary.length
         setCurrentWordIndex(newIndex)
-        setCurrentWord(wordLibrary[newIndex])
+        setCurrentWord(filteredLibrary[newIndex])
         setUserInput('')
         setShowResult(null)
         setShowHint(false)
@@ -271,7 +253,7 @@ function Study({
         handleKeyPress(key)
       }
     }
-  }, [mode, currentWordIndex, wordLibrary, handleKeyPress, resetToNextWord, submitAnswer, showResult])
+  }, [mode, currentWordIndex, showResult, handleKeyPress, resetToNextWord, submitAnswer, getFilteredWordLibrary])
 
   useEffect(() => {
     window.addEventListener('keydown', handlePhysicalKeyboard)
@@ -330,6 +312,7 @@ function Study({
         })
       }
     } else {
+      // 考试模式：只有在正确时才会调用 nextWord，所以这里直接切换
       resetToNextWord()
     }
   }
@@ -392,11 +375,6 @@ function Study({
             {currentBook !== '全部词本' ? `当前学习词本: ${currentBook}` : '请先选择一个词本'}
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '30px' }}>
-            {currentBook === '全部词本' && (
-              <button className="btn btn-primary" onClick={() => setCurrentPage('library')}>
-                去选择词本
-              </button>
-            )}
             <button className="btn btn-primary" onClick={() => setCurrentPage('library')}>
               去添加单词
             </button>
@@ -693,6 +671,7 @@ function Study({
             </button>
           )}
 
+          {/* 只有考试模式且已检查且正确时才显示“下一个单词”按钮 */}
           {mode === 'exam' && hasCheckedAnswer && showResult === 'correct' && (
             <button className="btn btn-primary" onClick={nextWord}>
               下一个单词 (Space)
