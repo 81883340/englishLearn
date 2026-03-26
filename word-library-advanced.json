@@ -1,0 +1,102 @@
+[
+  {
+    "word": "algorithm",
+    "meaning": "算法",
+    "example": "The algorithm sorts the data efficiently."
+  },
+  {
+    "word": "database",
+    "meaning": "数据库",
+    "example": "We need to connect to the database."
+  },
+  {
+    "word": "function",
+    "meaning": "函数",
+    "example": "This function calculates the result."
+  },
+  {
+    "word": "variable",
+    "meaning": "变量",
+    "example": "The variable stores a value."
+  },
+  {
+    "word": "constant",
+    "meaning": "常量",
+    "example": "The constant value never changes."
+  },
+  {
+    "word": "array",
+    "meaning": "数组",
+    "example": "The array contains multiple elements."
+  },
+  {
+    "word": "object",
+    "meaning": "对象",
+    "example": "The object has properties and methods."
+  },
+  {
+    "word": "string",
+    "meaning": "字符串",
+    "example": "A string is a sequence of characters."
+  },
+  {
+    "word": "number",
+    "meaning": "数字",
+    "example": "The number is positive."
+  },
+  {
+    "word": "boolean",
+    "meaning": "布尔值",
+    "example": "The boolean value is true or false."
+  },
+  {
+    "word": "interface",
+    "meaning": "接口",
+    "example": "The interface defines the contract."
+  },
+  {
+    "word": "class",
+    "meaning": "类",
+    "example": "The class defines an object's structure."
+  },
+  {
+    "word": "method",
+    "meaning": "方法",
+    "example": "The method performs an action."
+  },
+  {
+    "word": "property",
+    "meaning": "属性",
+    "example": "The property holds a value."
+  },
+  {
+    "word": "parameter",
+    "meaning": "参数",
+    "example": "Pass the parameter to the function."
+  },
+  {
+    "word": "argument",
+    "meaning": "实参",
+    "example": "Provide an argument for the parameter."
+  },
+  {
+    "word": "return",
+    "meaning": "返回",
+    "example": "The function returns a value."
+  },
+  {
+    "word": "import",
+    "meaning": "导入",
+    "example": "Import the module into your code."
+  },
+  {
+    "word": "export",
+    "meaning": "导出",
+    "example": "Export the function for use elsewhere."
+  },
+  {
+    "word": "module",
+    "meaning": "模块",
+    "example": "Each file is a separate module."
+  }
+]

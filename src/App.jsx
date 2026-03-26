@@ -1,32 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import toast, { Toaster } from 'react-hot-toast'
+import triggerConfetti from './utils/confetti'
 import Home from './components/Home'
 import Study from './components/Study'
 import WordLibrary from './components/WordLibrary'
 import Badges from './components/Badges'
+import MistakeBook from './components/MistakeBook'
+import SpacedRepetition from './components/SpacedRepetition'
 import './App.css'
-
-// 简单的纸屑效果
-const triggerConfetti = () => {
-  const colors = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#ef4444']
-  for (let i = 0; i < 50; i++) {
-    const confetti = document.createElement('div')
-    confetti.style.cssText = `
-      position: fixed;
-      width: 10px;
-      height: 10px;
-      background: ${colors[Math.floor(Math.random() * colors.length)]};
-      left: ${Math.random() * 100}vw;
-      top: -10px;
-      border-radius: ${Math.random() > 0.5 ? '50%' : '0'};
-      animation: confetti-fall ${2 + Math.random() * 2}s linear forwards;
-      pointer-events: none;
-      z-index: 9999;
-    `
-    document.body.appendChild(confetti)
-    setTimeout(() => confetti.remove(), 4000)
-  }
-}
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home')
@@ -62,6 +43,11 @@ function App() {
     return saved ? JSON.parse(saved) : []
   })
 
+  const [mistakeBook, setMistakeBook] = useState(() => {
+    const saved = localStorage.getItem('mistakeBook')
+    return saved ? JSON.parse(saved) : []
+  })
+
   const badgeDefinitions = [
     { id: 'first_word', name: '初学者', description: '完成第一个单词', icon: '🌟', condition: (p) => p.totalLearned >= 1 },
     { id: 'ten_words', name: '起步者', description: '学习10个单词', icon: '📚', condition: (p) => p.totalLearned >= 10 },
@@ -80,6 +66,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem('learnedWords', JSON.stringify(learnedWords))
   }, [learnedWords])
+
+  useEffect(() => {
+    localStorage.setItem('mistakeBook', JSON.stringify(mistakeBook))
+  }, [mistakeBook])
 
   useEffect(() => {
     localStorage.setItem('englishProgress', JSON.stringify(progress))
@@ -109,6 +99,7 @@ function App() {
       progress,
       learnedWords,
       wordLibrary,
+      mistakeBook,
       backupDate: new Date().toISOString()
     }
     const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' })
@@ -136,6 +127,9 @@ function App() {
               setProgress(data.progress)
               setLearnedWords(data.learnedWords)
               setWordLibrary(data.wordLibrary)
+              if (data.mistakeBook) {
+                setMistakeBook(data.mistakeBook)
+              }
               toast.success('恢复成功！')
             }
           } else {
@@ -157,6 +151,7 @@ function App() {
           <Home
             progress={progress}
             wordLibrary={wordLibrary}
+            mistakeBook={mistakeBook}
             setCurrentPage={setCurrentPage}
             handleBackupProgress={handleBackupProgress}
             handleRestoreProgress={handleRestoreProgress}
@@ -171,6 +166,8 @@ function App() {
             updateProgress={updateProgress}
             progress={progress}
             setCurrentPage={setCurrentPage}
+            mistakeBook={mistakeBook}
+            setMistakeBook={setMistakeBook}
           />
         )
       case 'library':
@@ -189,11 +186,30 @@ function App() {
             setCurrentPage={setCurrentPage}
           />
         )
+      case 'mistake':
+        return (
+          <MistakeBook
+            mistakeBook={mistakeBook}
+            setMistakeBook={setMistakeBook}
+            wordLibrary={wordLibrary}
+            setCurrentPage={setCurrentPage}
+          />
+        )
+      case 'review':
+        return (
+          <SpacedRepetition
+            wordLibrary={wordLibrary}
+            mistakeBook={mistakeBook}
+            setMistakeBook={setMistakeBook}
+            setCurrentPage={setCurrentPage}
+          />
+        )
       default:
         return (
           <Home
             progress={progress}
             wordLibrary={wordLibrary}
+            mistakeBook={mistakeBook}
             setCurrentPage={setCurrentPage}
             handleBackupProgress={handleBackupProgress}
             handleRestoreProgress={handleRestoreProgress}

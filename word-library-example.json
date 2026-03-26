@@ -1,0 +1,52 @@
+[
+  {
+    "word": "hello",
+    "meaning": "你好",
+    "example": "Hello, how are you?"
+  },
+  {
+    "word": "world",
+    "meaning": "世界",
+    "example": "The world is beautiful."
+  },
+  {
+    "word": "learning",
+    "meaning": "学习",
+    "example": "Learning is a lifelong process."
+  },
+  {
+    "word": "english",
+    "meaning": "英语",
+    "example": "I am learning English."
+  },
+  {
+    "word": "computer",
+    "meaning": "计算机",
+    "example": "I use a computer every day."
+  },
+  {
+    "word": "program",
+    "meaning": "程序",
+    "example": "This program is very useful."
+  },
+  {
+    "word": "keyboard",
+    "meaning": "键盘",
+    "example": "Please type on the keyboard."
+  },
+  {
+    "word": "screen",
+    "meaning": "屏幕",
+    "example": "The screen displays the content."
+  },
+  {
+    "word": "mouse",
+    "meaning": "鼠标",
+    "example": "Click the mouse button."
+  },
+  {
+    "word": "internet",
+    "meaning": "互联网",
+    "example": "The internet connects the world."
+  }
+]
