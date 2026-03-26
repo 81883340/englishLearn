@@ -269,6 +269,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     // 考试模式 - 未检查答案状态
     if (mode === 'exam' && !checked) {
       if (key === 'backspace') {
+        e.preventDefault()
         handleKeyPress('BACK')
       } else if (key === ' ') {
         e.preventDefault()
@@ -703,6 +704,30 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
                 音标: {currentWord.phonetic}
               </p>
             )}
+          </div>
+        )}
+
+        {showResult === 'correct' && (
+          <div style={{
+            padding: '20px',
+            background: 'rgba(16, 185, 129, 0.1)',
+            borderRadius: '12px',
+            marginBottom: '20px'
+          }}>
+            <p style={{
+              fontSize: '20px',
+              color: '#10b981',
+              fontWeight: '600',
+              marginBottom: '10px'
+            }}>
+              ✓ 回答正确！
+            </p>
+            <p style={{
+              fontSize: '14px',
+              color: 'var(--gray)'
+            }}>
+              按空格键继续下一题
+            </p>
           </div>
         )}
 
