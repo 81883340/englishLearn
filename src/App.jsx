@@ -209,6 +209,7 @@ function App() {
             setCurrentPage={setCurrentPage}
             handleBackupProgress={handleBackupProgress}
             handleRestoreProgress={handleRestoreProgress}
+            badgeDefinitions={badgeDefinitions}
           />
         )
       case 'study':
@@ -275,6 +276,7 @@ function App() {
             setCurrentPage={setCurrentPage}
             handleBackupProgress={handleBackupProgress}
             handleRestoreProgress={handleRestoreProgress}
+            badgeDefinitions={badgeDefinitions}
           />
         )
     }

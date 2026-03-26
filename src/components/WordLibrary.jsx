@@ -914,15 +914,17 @@ const exampleIndex = headers.findIndex(h => h.includes('example') || h === '例�
                   fontWeight: '500',
                   color: 'var(--dark)'
                 }}>
-                  释义 *
+                  词本
                 </label>
-                <input
-                  type="text"
+                <select
                   className="input"
-                  placeholder="例如: 你好"
-                  value={newWord.meaning}
-                  onChange={(e) => setNewWord({ ...newWord, meaning: e.target.value })}
-                />
+                  value={newWord.bookName || '默认词本'}
+                  onChange={(e) => setNewWord({ ...newWord, bookName: e.target.value })}
+                >
+                  {books.map(book => (
+                    <option key={book} value={book}>{book}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label style={{
@@ -949,7 +951,7 @@ const exampleIndex = headers.findIndex(h => h.includes('example') || h === '例�
                   className="btn btn-secondary"
                   onClick={() => {
                     setShowAddForm(false)
-                    setNewWord({ word: '', meaning: '', example: '', phonetic: '' })
+                    setNewWord({ word: '', meaning: '', example: '', phonetic: '', bookName: localBook === '全部词本' ? '默认词本' : localBook })
                   }}
                 >
                   取消
@@ -1074,6 +1076,18 @@ const exampleIndex = headers.findIndex(h => h.includes('example') || h === '例�
                         />
                       </td>
                       <td style={{ padding: '16px' }}>
+                        <select
+                          className="input"
+                          value={editingWord.bookName || '默认词本'}
+                          onChange={(e) => setEditingWord({ ...editingWord, bookName: e.target.value })}
+                          style={{ width: '100%', fontSize: '14px', padding: '8px' }}
+                        >
+                          {books.map(book => (
+                            <option key={book} value={book}>{book}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td style={{ padding: '16px' }}>
                         <input
                           type="text"
                           className="input"
@@ -1084,23 +1098,23 @@ const exampleIndex = headers.findIndex(h => h.includes('example') || h === '例�
                         />
                       </td>
                       <td style={{ padding: '16px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
                           <button
                             className="btn btn-success"
-                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                            style={{ padding: '8px 16px', fontSize: '14px', fontWeight: '500' }}
                             onClick={handleEditWord}
                           >
-                            保存
+                            ✓ 保存
                           </button>
                           <button
                             className="btn btn-secondary"
-                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                            style={{ padding: '8px 16px', fontSize: '14px', fontWeight: '500' }}
                             onClick={() => {
                               setEditingId(null)
                               setEditingWord({ word: '', meaning: '', example: '', phonetic: '', bookName: '默认词本' })
                             }}
                           >
-                            取消
+                            ✕ 取消
                           </button>
                         </div>
                       </td>
@@ -1151,20 +1165,20 @@ const exampleIndex = headers.findIndex(h => h.includes('example') || h === '例�
                         "{word.example}"
                       </td>
                       <td style={{ padding: '16px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
                           <button
                             className="btn btn-secondary"
-                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                            style={{ padding: '8px 16px', fontSize: '14px', fontWeight: '500' }}
                             onClick={() => startEditing(word)}
                           >
-                            编辑
+                            ✏ 编辑
                           </button>
                           <button
                             className="btn btn-danger"
-                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                            style={{ padding: '8px 16px', fontSize: '14px', fontWeight: '500' }}
                             onClick={() => handleDeleteWord(word.id)}
                           >
-                            删除
+                            🗑 删除
                           </button>
                         </div>
                       </td>

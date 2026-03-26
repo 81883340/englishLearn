@@ -1,6 +1,6 @@
 import React from 'react'
 
-function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackupProgress, handleRestoreProgress }) {
+function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackupProgress, handleRestoreProgress, badgeDefinitions }) {
   const accuracy = progress.correctAnswers + progress.wrongAnswers > 0
     ? Math.round((progress.correctAnswers / (progress.correctAnswers + progress.wrongAnswers)) * 100)
     : 0
@@ -147,6 +147,102 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
             <div className="stat-label">连续正确</div>
           </div>
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: '30px' }}>
+        <h3 style={{
+          fontSize: '20px',
+          fontWeight: '700',
+          color: 'var(--dark)',
+          marginBottom: '20px',
+          textAlign: 'center',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px'
+        }}>
+          <span>🏆</span> 我的成就
+          <span style={{
+            fontSize: '14px',
+            fontWeight: '500',
+            background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+            padding: '2px 12px',
+            borderRadius: '12px',
+            color: 'white'
+          }}>
+            {progress.badges?.length || 0} / {badgeDefinitions?.length || 0}
+          </span>
+        </h3>
+        {progress.badges && progress.badges.length > 0 ? (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+            gap: '16px'
+          }}>
+            {progress.badges.map(badgeId => {
+              const badge = badgeDefinitions?.find(b => b.id === badgeId)
+              if (!badge) return null
+              return (
+                <div key={badge.id} style={{
+                  padding: '16px',
+                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(99, 102, 241, 0.02) 100%)',
+                  border: '2px solid rgba(99, 102, 241, 0.2)',
+                  borderRadius: '12px',
+                  textAlign: 'center',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)'
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(99, 102, 241, 0.2)'
+                  e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.4)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = 'none'
+                  e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.2)'
+                }}
+                >
+                  <div style={{
+                    fontSize: '48px',
+                    marginBottom: '12px',
+                    filter: 'drop-shadow(0 2px 8px rgba(99, 102, 241, 0.3))'
+                  }}>
+                    {badge.icon}
+                  </div>
+                  <div style={{
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    color: 'var(--dark)',
+                    marginBottom: '6px'
+                  }}>
+                    {badge.name}
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: 'var(--gray)',
+                    lineHeight: '1.4'
+                  }}>
+                    {badge.description}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div style={{
+            textAlign: 'center',
+            padding: '40px 20px',
+            color: 'var(--gray)'
+          }}>
+            <div style={{ fontSize: '60px', marginBottom: '16px' }}>🏅</div>
+            <p style={{ fontSize: '16px', marginBottom: '8px' }}>
+              还没有获得成就
+            </p>
+            <p style={{ fontSize: '14px' }}>
+              开始学习，解锁更多成就徽章吧！
+            </p>
+          </div>
+        )}
       </div>
 
       <div style={{
