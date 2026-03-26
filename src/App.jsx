@@ -41,6 +41,12 @@ function App() {
   const [currentBook, setCurrentBook] = useState(() =>
     safeLoadString('currentBook', '全部词本')
   )
+  const [points, setPoints] = useState(() =>
+    safeLoadFromStorage('points', 0)
+  )
+  const [checkInHistory, setCheckInHistory] = useState(() =>
+    safeLoadFromStorage('checkInHistory', [])
+  )
   const [progress, setProgress] = useState(() =>
     safeLoadFromStorage('englishProgress', {
       totalLearned: 0,
@@ -82,12 +88,6 @@ function App() {
   // 学习目标和积分系统
   const [dailyGoal, setDailyGoal] = useState(() =>
     safeLoadFromStorage('dailyGoal', 20)
-  )
-  const [points, setPoints] = useState(() =>
-    safeLoadFromStorage('points', 0)
-  )
-  const [checkInHistory, setCheckInHistory] = useState(() =>
-    safeLoadFromStorage('checkInHistory', [])
   )
 
   const badgeDefinitions = [
@@ -196,10 +196,21 @@ function App() {
     triggerConfetti()
   }
 
-  // 完成每日学习目标
+  // 完成每日学习目标（自动打卡）
   const handleCompleteDailyGoal = () => {
-    setPoints(points + dailyGoal * 2) // 每个单词奖励2积分
-    toast.success(`🏆 完成今日目标！获得 ${dailyGoal * 2} 积分`)
+    const today = getTodayDate()
+    let totalBonus = dailyGoal * 2
+    let message = `🏆 完成今日目标！获得 ${totalBonus} 积分`
+
+    // 自动打卡（如果今天还未打卡）
+    if (!checkInHistory.includes(today)) {
+      setCheckInHistory([...checkInHistory, today])
+      totalBonus += 10
+      message = `🏆 完成今日目标并自动打卡！获得 ${totalBonus} 积分（含打卡奖励）`
+    }
+
+    setPoints(points + totalBonus)
+    toast.success(message)
     triggerConfetti()
   }
 
@@ -314,7 +325,6 @@ function App() {
             setDailyGoal={setDailyGoal}
             points={points}
             checkInHistory={checkInHistory}
-            handleCheckIn={handleCheckIn}
             currentBook={currentBook}
           />
         )

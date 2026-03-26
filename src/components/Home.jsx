@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import toast from 'react-hot-toast'
 
-function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackupProgress, handleRestoreProgress, badgeDefinitions, dailyGoal, setDailyGoal, points, checkInHistory, handleCheckIn, currentBook }) {
+function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackupProgress, handleRestoreProgress, badgeDefinitions, dailyGoal, setDailyGoal, points, checkInHistory, currentBook }) {
   const accuracy = progress.correctAnswers + progress.wrongAnswers > 0
     ? Math.round((progress.correctAnswers / (progress.correctAnswers + progress.wrongAnswers)) * 100)
     : 0
@@ -30,9 +30,6 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
     return daysToComplete
   }
 
-  // 检查今日是否已打卡
-  const getTodayDate = () => new Date().toISOString().split('T')[0]
-  const isCheckedInToday = checkInHistory.includes(getTodayDate())
   const [showGoalModal, setShowGoalModal] = useState(false)
   const [tempGoal, setTempGoal] = useState(dailyGoal)
 
@@ -51,18 +48,6 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
           </button>
           <button
             className={`nav-link`}
-            onClick={() => setCurrentPage('study')}
-          >
-            开始学习
-          </button>
-          <button
-            className={`nav-link`}
-            onClick={() => setCurrentPage('review')}
-          >
-            复习
-          </button>
-          <button
-            className={`nav-link`}
             onClick={() => setCurrentPage('library')}
           >
             词库管理
@@ -78,16 +63,6 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
             onClick={() => setCurrentPage('badges')}
           >
             徽章成就
-          </button>
-          <button
-            className={`nav-link`}
-            onClick={handleCheckIn}
-            style={{
-              background: isCheckedInToday ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
-              border: isCheckedInToday ? '2px solid var(--primary)' : 'none'
-            }}
-          >
-            {isCheckedInToday ? '✓ 已打卡' : '📅 每日打卡'}
           </button>
         </div>
       </nav>
@@ -241,24 +216,26 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
             <div className="stat-label">已获成就</div>
           </div>
           <div className="stat-card">
-            <div className="stat-icon">📅</div>
-            <div className="stat-value">{typeof calculateDaysToComplete() === 'number' ? `${calculateDaysToComplete()}天` : calculateDaysToComplete()}</div>
-            <div className="stat-label">预计完成</div>
-          </div>
-          <div className="stat-card">
             <div className="stat-icon">⭐</div>
             <div className="stat-value">{points}</div>
             <div className="stat-label">我的积分</div>
           </div>
           <div className="stat-card">
+            <div className="stat-icon">📅</div>
+            <div className="stat-value">{typeof calculateDaysToComplete() === 'number' ? `${calculateDaysToComplete()}天` : calculateDaysToComplete()}</div>
+            <div className="stat-label">预计完成</div>
+          </div>
+          
+          <div className="stat-card">
+            <div className="stat-icon">✅</div>
+            <div className="stat-value">{checkInHistory.length}</div>
+            <div className="stat-label">累计打卡</div>
+          </div>
+          
+          <div className="stat-card">
             <div className="stat-icon">📊</div>
             <div className="stat-value">{Math.min(progress.totalLearned, dailyGoal)}/{dailyGoal}</div>
             <div className="stat-label">今日进度</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">📅</div>
-            <div className="stat-value">{checkInHistory.length}</div>
-            <div className="stat-label">累计打卡</div>
           </div>
         </div>
         <div style={{
