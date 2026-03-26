@@ -34,6 +34,20 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   const [todayLearnedCount, setTodayLearnedCount] = useState(0)
   const [sessionLearnedCount, setSessionLearnedCount] = useState(0)
 
+  // 单词发音功能
+  const speakWord = (word) => {
+    if (!word) return
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(word)
+      utterance.lang = 'en-US'
+      utterance.rate = 0.9
+      utterance.pitch = 1
+      window.speechSynthesis.speak(utterance)
+    } else {
+      alert('您的浏览器不支持语音合成功能')
+    }
+  }
+
   // 使用 ref 来避免闭包问题
   const hasCheckedAnswerRef = useRef(hasCheckedAnswer)
   useEffect(() => {
@@ -544,15 +558,45 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
             // 学习模式：显示单词、音标、释义、例句
             <>
               <div style={{ marginBottom: '24px' }}>
-                <h1 style={{
-                  fontSize: '56px',
-                  fontWeight: '800',
-                  color: 'var(--dark)',
-                  marginBottom: '12px',
-                  lineHeight: '1.2'
-                }}>
-                  {currentWord.word}
-                </h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
+                  <h1 style={{
+                    fontSize: '56px',
+                    fontWeight: '800',
+                    color: 'var(--dark)',
+                    marginBottom: 0,
+                    lineHeight: '1.2'
+                  }}>
+                    {currentWord.word}
+                  </h1>
+                  <button
+                    onClick={() => speakWord(currentWord.word)}
+                    style={{
+                      background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                      border: '2px solid #a78bfa',
+                      borderRadius: '50%',
+                      width: '56px',
+                      height: '56px',
+                      fontSize: '28px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.transform = 'scale(1.1)'
+                      e.target.style.boxShadow = '0 6px 20px rgba(99, 102, 241, 0.4)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.transform = 'scale(1)'
+                      e.target.style.boxShadow = '0 4px 15px rgba(99, 102, 241, 0.3)'
+                    }}
+                    title="点击发音"
+                  >
+                    🔊
+                  </button>
+                </div>
                 {currentWord.phonetic && (
                   <p style={{
                     fontSize: '20px',

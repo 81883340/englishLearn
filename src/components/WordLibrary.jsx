@@ -1,5 +1,19 @@
 import React, { useState, useEffect } from 'react'
 
+// 单词发音功能
+const speakWord = (word) => {
+  if (!word) return
+  if ('speechSynthesis' in window) {
+    const utterance = new SpeechSynthesisUtterance(word)
+    utterance.lang = 'en-US'
+    utterance.rate = 0.9
+    utterance.pitch = 1
+    window.speechSynthesis.speak(utterance)
+  } else {
+    alert('您的浏览器不支持语音合成功能')
+  }
+}
+
 // 简化的翻译映射（避免重复键）
 const techTermsMap = {};
 
@@ -1277,13 +1291,41 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage, currentBook,
                         />
                       </td>
                       <td style={{ padding: '16px' }}>
-                        <span style={{
-                          fontSize: '16px',
-                          fontWeight: '700',
-                          color: 'var(--primary)'
-                        }}>
-                          {word.word}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{
+                            fontSize: '16px',
+                            fontWeight: '700',
+                            color: 'var(--primary)'
+                          }}>
+                            {word.word}
+                          </span>
+                          <button
+                            onClick={() => speakWord(word.word)}
+                            style={{
+                              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                              border: '2px solid #a78bfa',
+                              borderRadius: '50%',
+                              width: '32px',
+                              height: '32px',
+                              fontSize: '16px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              transition: 'all 0.3s ease',
+                              flexShrink: 0
+                            }}
+                            onMouseEnter={(e) => {
+                              e.target.style.transform = 'scale(1.1)'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.transform = 'scale(1)'
+                            }}
+                            title="发音"
+                          >
+                            🔊
+                          </button>
+                        </div>
                       </td>
                       <td style={{ padding: '16px', color: 'var(--gray)', fontFamily: 'Arial, sans-serif' }}>
                         {word.phonetic || '-'}
