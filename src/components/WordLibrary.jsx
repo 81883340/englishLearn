@@ -301,7 +301,7 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage, currentBook,
   const [showTransferModal, setShowTransferModal] = useState(false)
   const [transferTargetBook, setTransferTargetBook] = useState('默认词本')
   // 分页状态
-  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPage, setCurrentPageLocal] = useState(1)
   const [pageSize, setPageSize] = useState(20) // 每页显示20个单词
 
   // 自动获取单词信息
@@ -587,7 +587,7 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage, currentBook,
 
   // 切换页码
   const handlePageChange = (newPage) => {
-    setCurrentPage(newPage)
+    setCurrentPageLocal(newPage)
     setSelectedWords([])
   }
 
@@ -1463,14 +1463,14 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage, currentBook,
                             style={{ padding: '8px 16px', fontSize: '14px', fontWeight: '500' }}
                             onClick={() => startEditing(word)}
                           >
-                            编辑
+                            ✏ 编辑
                           </button>
                           <button
                             className="btn btn-danger"
                             style={{ padding: '8px 16px', fontSize: '14px', fontWeight: '500' }}
                             onClick={() => handleDeleteWord(word.id)}
                           >
-                            删除
+                            🗑 删除
                           </button>
                         </div>
                       </td>
