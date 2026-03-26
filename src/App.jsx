@@ -23,10 +23,23 @@ const safeLoadFromStorage = (key, defaultValue) => {
   }
 }
 
+// 安全地从 localStorage 读取字符串数据（不需要 JSON.parse）
+const safeLoadString = (key, defaultValue) => {
+  try {
+    const saved = localStorage.getItem(key)
+    if (!saved) return defaultValue
+    return saved
+  } catch (error) {
+    console.error(`Failed to load ${key} from storage:`, error)
+    localStorage.removeItem(key)
+    return defaultValue
+  }
+}
+
 function App() {
   const [currentPage, setCurrentPage] = useState('home')
   const [currentBook, setCurrentBook] = useState(() =>
-    safeLoadFromStorage('currentBook', '全部词本')
+    safeLoadString('currentBook', '全部词本')
   )
   const [progress, setProgress] = useState(() =>
     safeLoadFromStorage('englishProgress', {

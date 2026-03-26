@@ -232,7 +232,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         handleKeyPress(key)
       }
     }
-  }, [mode, currentWordIndex, filteredWordLibrary, handleKeyPress, resetToNextWord, submitAnswer, setStudyProgress, currentBook])
+  }, [mode, currentWordIndex, filteredWordLibrary, handleKeyPress, resetToNextWord, submitAnswer, currentBook])
 
   useEffect(() => {
     window.addEventListener('keydown', handlePhysicalKeyboard)
