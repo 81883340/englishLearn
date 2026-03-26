@@ -235,13 +235,97 @@ function MobileExam({
           <span>📱 移动考试</span>
         </div>
         <button
-          className="nav-link"
-          onClick={() => setCurrentPage('study')}
-          style={{ fontSize: '13px' }}
+          className="btn btn-secondary"
+          onClick={() => setCurrentPage('home')}
+          style={{
+            padding: '6px 14px',
+            fontSize: '13px',
+            fontWeight: '600',
+            borderRadius: '8px'
+          }}
         >
           返回
         </button>
       </nav>
+
+      {/* 操作按钮区域 */}
+      <div style={{
+        display: 'flex',
+        gap: '10px',
+        justifyContent: 'center',
+        marginBottom: '12px'
+      }}>
+        {!hasCheckedAnswer && (
+          <>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowHint(!showHint)}
+              style={{
+                flex: 1,
+                padding: '10px 14px',
+                fontSize: '14px',
+                fontWeight: '600'
+              }}
+            >
+              💡 {showHint ? '隐藏提示' : '显示提示'}
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={submitAnswer}
+              disabled={userInput.length === 0}
+              style={{
+                flex: 2,
+                padding: '10px 14px',
+                fontSize: '14px',
+                fontWeight: '600',
+                opacity: userInput.length === 0 ? 0.5 : 1
+              }}
+            >
+              检查答案
+            </button>
+          </>
+        )}
+        {hasCheckedAnswer && showResult === 'wrong' && (
+          <>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowHint(!showHint)}
+              style={{
+                flex: 1,
+                padding: '10px 14px',
+                fontSize: '14px',
+                fontWeight: '600'
+              }}
+            >
+              💡 {showHint ? '隐藏提示' : '显示提示'}
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={retryWord}
+              style={{
+                flex: 1,
+                padding: '10px 14px',
+                fontSize: '14px',
+                fontWeight: '600'
+              }}
+            >
+              重新拼写
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={nextWord}
+              style={{
+                flex: 1,
+                padding: '10px 14px',
+                fontSize: '14px',
+                fontWeight: '600'
+              }}
+            >
+              跳过
+            </button>
+          </>
+        )}
+      </div>
 
       {/* 统计信息 */}
       <div style={{
@@ -249,7 +333,7 @@ function MobileExam({
         gap: '8px',
         justifyContent: 'center',
         flexWrap: 'wrap',
-        marginBottom: '16px'
+        marginBottom: '12px'
       }}>
         <span style={{
           display: 'inline-block',
@@ -282,34 +366,51 @@ function MobileExam({
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        padding: '16px',
-        marginBottom: '70px' // 为固定按钮留出空间
+        padding: '12px',
+        marginBottom: '20px'
       }}>
-        {/* 单词释义 */}
-        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+        {/* 提示信息 */}
+        {showHint && !hasCheckedAnswer && (
           <div style={{
-            fontSize: '20px',
+            padding: '10px 12px',
+            background: 'rgba(99, 102, 241, 0.1)',
+            borderRadius: '8px',
+            marginBottom: '10px'
+          }}>
+            <p style={{ color: 'var(--primary)', fontWeight: '500', marginBottom: '3px', fontSize: '12px' }}>
+              单词长度: {currentWord.word.length} 个字母
+            </p>
+            <p style={{ color: 'var(--gray)', fontSize: '11px', fontStyle: 'italic' }}>
+              例句: "{currentWord.example}"
+            </p>
+          </div>
+        )}
+
+        {/* 单词释义 */}
+        <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+          <div style={{
+            fontSize: '18px',
             color: 'var(--primary)',
             fontWeight: '600',
-            marginBottom: '8px',
+            marginBottom: '6px',
             lineHeight: '1.3'
           }}>
             {currentWord.meaning}
           </div>
           {currentWord.phonetic && (
             <div style={{
-              fontSize: '14px',
+              fontSize: '13px',
               color: 'var(--gray)',
               fontFamily: 'Arial, sans-serif',
-              marginBottom: '6px'
+              marginBottom: '4px'
             }}>
               📢 {currentWord.phonetic}
             </div>
           )}
           <div style={{
-            fontSize: '12px',
+            fontSize: '11px',
             color: 'var(--gray)',
-            marginBottom: '12px'
+            marginBottom: '10px'
           }}>
             请拼写这个单词
           </div>
@@ -318,21 +419,21 @@ function MobileExam({
         {/* 输入框 */}
         <div style={{
           position: 'relative',
-          marginBottom: '16px'
+          marginBottom: '12px'
         }}>
           {/* 显示占位符 */}
           <div style={{
             display: 'flex',
             gap: '4px',
             justifyContent: 'center',
-            marginBottom: '12px'
+            marginBottom: '10px'
           }}>
             {Array(currentWord.word.length).fill(0).map((_, index) => (
               <div
                 key={index}
                 style={{
-                  width: '28px',
-                  height: '36px',
+                  width: '26px',
+                  height: '34px',
                   borderBottom: `3px solid ${
                     userInput[index]
                       ? showResult === 'correct'
@@ -347,7 +448,7 @@ function MobileExam({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '16px',
+                  fontSize: '15px',
                   fontWeight: '700',
                   color: userInput[index]
                     ? showResult === 'correct'
@@ -382,15 +483,15 @@ function MobileExam({
             disabled={hasCheckedAnswer}
             style={{
               width: '100%',
-              padding: '12px 16px',
-              fontSize: '22px',
+              padding: '10px 14px',
+              fontSize: '20px',
               fontWeight: '600',
               border: `3px solid ${
                 showResult === 'correct' ? '#10b981' :
                 showResult === 'wrong' ? '#ef4444' :
                 isFocused ? 'var(--primary)' : '#e5e7eb'
               }`,
-              borderRadius: '10px',
+              borderRadius: '8px',
               outline: 'none',
               textAlign: 'center',
               transition: 'all 0.3s ease',
@@ -407,23 +508,23 @@ function MobileExam({
         {/* 结果反馈 */}
         {showResult === 'correct' && (
           <div style={{
-            padding: '12px 16px',
+            padding: '10px 14px',
             background: 'rgba(16, 185, 129, 0.1)',
-            borderRadius: '10px',
-            marginBottom: '16px',
+            borderRadius: '8px',
+            marginBottom: '10px',
             animation: 'fade-in 0.3s ease'
           }}>
             <p style={{
-              fontSize: '16px',
+              fontSize: '15px',
               color: '#10b981',
               fontWeight: '600',
-              marginBottom: '6px',
+              marginBottom: '4px',
               textAlign: 'center'
             }}>
               ✓ 回答正确！
             </p>
             <p style={{
-              fontSize: '13px',
+              fontSize: '12px',
               color: 'var(--gray)',
               textAlign: 'center'
             }}>
@@ -434,33 +535,33 @@ function MobileExam({
 
         {showResult === 'wrong' && (
           <div style={{
-            padding: '12px 16px',
+            padding: '10px 14px',
             background: 'rgba(239, 68, 68, 0.1)',
-            borderRadius: '10px',
-            marginBottom: '16px',
+            borderRadius: '8px',
+            marginBottom: '10px',
             animation: 'fade-in 0.3s ease'
           }}>
             <p style={{
-              fontSize: '16px',
+              fontSize: '15px',
               color: 'var(--danger)',
               fontWeight: '600',
-              marginBottom: '8px',
+              marginBottom: '6px',
               textAlign: 'center'
             }}>
               正确答案是: {currentWord.word}
             </p>
             {currentWord.phonetic && (
               <p style={{
-                fontSize: '13px',
+                fontSize: '12px',
                 color: 'var(--gray)',
                 textAlign: 'center',
-                marginBottom: '6px'
+                marginBottom: '4px'
               }}>
                 音标: {currentWord.phonetic}
               </p>
             )}
             <p style={{
-              fontSize: '13px',
+              fontSize: '12px',
               color: 'var(--gray)',
               fontStyle: 'italic',
               textAlign: 'center'
@@ -468,111 +569,6 @@ function MobileExam({
               "{currentWord.example}"
             </p>
           </div>
-        )}
-
-        {/* 提示信息 */}
-        {showHint && !hasCheckedAnswer && (
-          <div style={{
-            padding: '12px 14px',
-            background: 'rgba(99, 102, 241, 0.1)',
-            borderRadius: '10px',
-            marginBottom: '12px'
-          }}>
-            <p style={{ color: 'var(--primary)', fontWeight: '500', marginBottom: '4px', fontSize: '13px' }}>
-              单词长度: {currentWord.word.length} 个字母
-            </p>
-            <p style={{ color: 'var(--gray)', fontSize: '12px', fontStyle: 'italic' }}>
-              例句: "{currentWord.example}"
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* 固定底部按钮 */}
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        background: 'white',
-        padding: '10px 14px',
-        boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.1)',
-        zIndex: 100,
-        display: 'flex',
-        gap: '10px',
-        justifyContent: 'center',
-        maxWidth: '600px',
-        margin: '0 auto'
-      }}>
-        {!hasCheckedAnswer && (
-          <>
-            <button
-              className="btn btn-secondary"
-              onClick={() => setShowHint(!showHint)}
-              style={{
-                flex: 1,
-                padding: '12px 16px',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}
-            >
-              💡 {showHint ? '隐藏提示' : '显示提示'}
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={submitAnswer}
-              disabled={userInput.length === 0}
-              style={{
-                flex: 2,
-                padding: '12px 16px',
-                fontSize: '14px',
-                fontWeight: '600',
-                opacity: userInput.length === 0 ? 0.5 : 1
-              }}
-            >
-              检查答案
-            </button>
-          </>
-        )}
-        {hasCheckedAnswer && showResult === 'wrong' && (
-          <>
-            <button
-              className="btn btn-secondary"
-              onClick={() => setShowHint(!showHint)}
-              style={{
-                flex: 1,
-                padding: '12px 16px',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}
-            >
-              💡 {showHint ? '隐藏提示' : '显示提示'}
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={retryWord}
-              style={{
-                flex: 1,
-                padding: '12px 16px',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}
-            >
-              重新拼写
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={nextWord}
-              style={{
-                flex: 1,
-                padding: '12px 16px',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}
-            >
-              跳过
-            </button>
-          </>
         )}
       </div>
 
