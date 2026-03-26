@@ -51,6 +51,12 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
           </button>
           <button
             className={`nav-link`}
+            onClick={() => setCurrentPage('badges')}
+          >
+            徽章成就
+          </button>
+          <button
+            className={`nav-link`}
             onClick={handleCheckIn}
             style={{
               background: isCheckedInToday ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
@@ -211,19 +217,24 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
             <div className="stat-label">已获成就</div>
           </div>
           <div className="stat-card">
-            <div className="stat-icon">🎯</div>
-            <div className="stat-value">{badgeDefinitions?.length || 0}</div>
-            <div className="stat-label">总成就数</div>
-          </div>
-          <div className="stat-card">
             <div className="stat-icon">📊</div>
-            <div className="stat-value">{badgeDefinitions?.length > 0 ? Math.round(((progress.badges?.length || 0) / badgeDefinitions.length) * 100) : 0}%</div>
-            <div className="stat-label">完成度</div>
+            <div className="stat-value">{wordLibrary.length > 0 ? Math.round((progress.totalLearned / wordLibrary.length) * 100) : 0}%</div>
+            <div className="stat-label">词库完成度</div>
           </div>
           <div className="stat-card">
             <div className="stat-icon">⭐</div>
             <div className="stat-value">{points}</div>
             <div className="stat-label">我的积分</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon">📊</div>
+            <div className="stat-value">{Math.min(progress.totalLearned, dailyGoal)}/{dailyGoal}</div>
+            <div className="stat-label">今日进度</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon">📅</div>
+            <div className="stat-value">{checkInHistory.length}</div>
+            <div className="stat-label">累计打卡</div>
           </div>
         </div>
         <div style={{
