@@ -290,9 +290,8 @@ function MobileExam({
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        padding: '10px',
-        marginBottom: '8px',
-        overflow: 'auto'
+        padding: '12px',
+        marginBottom: '8px'
       }}>
         {/* 提示信息 */}
         {showHint && !hasCheckedAnswer && (
@@ -436,7 +435,7 @@ function MobileExam({
             padding: '8px 12px',
             background: 'rgba(16, 185, 129, 0.1)',
             borderRadius: '6px',
-            marginBottom: '8px',
+            marginBottom: '10px',
             animation: 'fade-in 0.3s ease'
           }}>
             <p style={{
@@ -463,7 +462,7 @@ function MobileExam({
             padding: '8px 12px',
             background: 'rgba(239, 68, 68, 0.1)',
             borderRadius: '6px',
-            marginBottom: '8px',
+            marginBottom: '10px',
             animation: 'fade-in 0.3s ease'
           }}>
             <p style={{
@@ -495,85 +494,85 @@ function MobileExam({
             </p>
           </div>
         )}
-      </div>
 
-      {/* 操作按钮区域 - 移到结果返回下方 */}
-      <div style={{
-        display: 'flex',
-        gap: '8px',
-        justifyContent: 'center',
-        flexShrink: 0
-      }}>
-        {!hasCheckedAnswer && (
-          <>
-            <button
-              className="btn btn-secondary"
-              onClick={() => setShowHint(!showHint)}
-              style={{
-                flex: 1,
-                padding: '8px 12px',
-                fontSize: '13px',
-                fontWeight: '600'
-              }}
-            >
-              💡 {showHint ? '隐藏提示' : '显示提示'}
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={submitAnswer}
-              disabled={userInput.length === 0}
-              style={{
-                flex: 2,
-                padding: '8px 12px',
-                fontSize: '13px',
-                fontWeight: '600',
-                opacity: userInput.length === 0 ? 0.5 : 1
-              }}
-            >
-              检查答案
-            </button>
-          </>
-        )}
-        {hasCheckedAnswer && showResult === 'wrong' && (
-          <>
-            <button
-              className="btn btn-secondary"
-              onClick={() => setShowHint(!showHint)}
-              style={{
-                flex: 1,
-                padding: '8px 12px',
-                fontSize: '13px',
-                fontWeight: '600'
-              }}
-            >
-              💡 {showHint ? '隐藏提示' : '显示提示'}
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={retryWord}
-              style={{
-                flex: 1,
-                padding: '8px 12px',
-                fontSize: '13px',
-                fontWeight: '600'
-              }}
-            >
-              重新拼写
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={nextWord}
-              style={{
-                flex: 1,
-                padding: '8px 12px',
-                fontSize: '13px',
-                fontWeight: '600'
-              }}
-            >
-              跳过
-            </button>
-          </>
-        )}
+        {/* 操作按钮区域 - 移到白色背景框内，结果反馈下方 */}
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          justifyContent: 'center',
+          marginTop: 'auto'
+        }}>
+          {!hasCheckedAnswer && (
+            <>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowHint(!showHint)}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  fontSize: '13px',
+                  fontWeight: '600'
+                }}
+              >
+                💡 {showHint ? '隐藏提示' : '显示提示'}
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={submitAnswer}
+                disabled={userInput.length === 0}
+                style={{
+                  flex: 2,
+                  padding: '8px 12px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  opacity: userInput.length === 0 ? 0.5 : 1
+                }}
+              >
+                检查答案
+              </button>
+            </>
+          )}
+          {hasCheckedAnswer && showResult === 'wrong' && (
+            <>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowHint(!showHint)}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  fontSize: '13px',
+                  fontWeight: '600'
+                }}
+              >
+                💡 {showHint ? '隐藏提示' : '显示提示'}
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={retryWord}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  fontSize: '13px',
+                  fontWeight: '600'
+                }}
+              >
+                重新拼写
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={nextWord}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  fontSize: '13px',
+                  fontWeight: '600'
+                }}
+              >
+                跳过
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <style>{`

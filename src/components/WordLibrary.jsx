@@ -1463,14 +1463,14 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage, currentBook,
                             style={{ padding: '8px 16px', fontSize: '14px', fontWeight: '500' }}
                             onClick={() => startEditing(word)}
                           >
-                            ✏ 编辑
+                            编辑
                           </button>
                           <button
                             className="btn btn-danger"
                             style={{ padding: '8px 16px', fontSize: '14px', fontWeight: '500' }}
                             onClick={() => handleDeleteWord(word.id)}
                           >
-                            🗑 删除
+                            删除
                           </button>
                         </div>
                       </td>
