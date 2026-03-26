@@ -33,6 +33,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   const [hasCheckedAnswer, setHasCheckedAnswer] = useState(false)
   const [todayLearnedCount, setTodayLearnedCount] = useState(0)
   const [sessionLearnedCount, setSessionLearnedCount] = useState(0)
+  const [justSubmitted, setJustSubmitted] = useState(false) // 防止 Enter 后立刻触发 Space
 
   // 使用 ref 来避免闭包问题
   const hasCheckedAnswerRef = useRef(hasCheckedAnswer)
@@ -129,6 +130,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     if (!currentWord || userInput.length === 0) return
 
     setHasCheckedAnswer(true)
+    setJustSubmitted(true) // 设置"刚提交"锁，防止立即触发下一题
 
     if (userInput.toLowerCase() === currentWord.word.toLowerCase()) {
       // 答对
@@ -177,6 +179,8 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     } else {
       // 答错
       setShowResult('wrong')
+      setUserInput('') // 清空输入框
+
       updateProgress({
         wrongAnswers: progress.wrongAnswers + 1,
         streak: 0
@@ -227,6 +231,12 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
 
     const checked = hasCheckedAnswerRef.current
 
+    // 🚫 刚提交时，阻止立即触发下一题（防抖锁）
+    if (justSubmitted) {
+      setJustSubmitted(false)
+      return
+    }
+
     // 考试模式 - 已检查答案状态
     if (mode === 'exam' && checked) {
       // 按空格键切换到下一个单词
@@ -241,13 +251,15 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
       if (!e.ctrlKey && !e.altKey && !e.metaKey &&
           key !== 'control' && key !== 'alt' && key !== 'meta' &&
           key !== 'backspace' && key !== 'tab' && key !== 'escape') {
-        const newIndex = (currentWordIndex + 1) % wordLibrary.length
+        const filteredLibrary = getFilteredWordLibrary()
+        const newIndex = (currentWordIndex + 1) % filteredLibrary.length
         setCurrentWordIndex(newIndex)
-        setCurrentWord(wordLibrary[newIndex])
+        setCurrentWord(filteredLibrary[newIndex])
         setUserInput('')
         setShowResult(null)
         setShowHint(false)
         setHasCheckedAnswer(false)
+        setJustSubmitted(false)
         return
       }
     }
@@ -267,7 +279,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         handleKeyPress(key)
       }
     }
-  }, [mode, currentWordIndex, wordLibrary, handleKeyPress, resetToNextWord, submitAnswer])
+  }, [mode, currentWordIndex, wordLibrary, handleKeyPress, resetToNextWord, submitAnswer, justSubmitted, getFilteredWordLibrary])
 
   useEffect(() => {
     window.addEventListener('keydown', handlePhysicalKeyboard)
@@ -282,6 +294,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setShowResult(null)
     setShowHint(false)
     setHasCheckedAnswer(false)
+    setJustSubmitted(false)
     if (mode === 'exam') {
       // 从考试切换到学习，重置到该词本的第一个单词
       const bookProgress = studyProgress[currentBook] || { lastIndex: 0 }
@@ -308,6 +321,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setShowResult(null)
     setShowHint(false)
     setHasCheckedAnswer(false)
+    setJustSubmitted(false)
 
     if (mode === 'learn') {
       const filteredLibrary = getFilteredWordLibrary()
@@ -336,6 +350,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setShowResult(null)
     setShowHint(false)
     setHasCheckedAnswer(false)
+    setJustSubmitted(false)
 
     if (mode === 'learn') {
       const filteredLibrary = getFilteredWordLibrary()
