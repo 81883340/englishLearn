@@ -11,34 +11,11 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   const [showHint, setShowHint] = useState(false)
   const [pressedKey, setPressedKey] = useState(null)
   const [hasCheckedAnswer, setHasCheckedAnswer] = useState(false)
-  const [todayLearnedCount, setTodayLearnedCount] = useState(0)
   
   // 根据当前词本过滤单词
-  const filteredWordLibrary = currentBook === '全部词本'
-    ? wordLibrary
+  const filteredWordLibrary = currentBook === '全部词本' 
+    ? wordLibrary 
     : wordLibrary.filter(w => w.bookName === currentBook)
-
-  // 计算今日应该学习的单词范围（按每日目标分割词本）
-  const getTodayWordRange = () => {
-    if (currentBook === '全部词本') {
-      return { start: 0, end: filteredWordLibrary.length }
-    }
-
-    // 使用词本名哈希作为种子，确保每个词本的学习进度独立
-    const bookHash = currentBook.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    const startDate = new Date('2024-01-01') // 假设2024-01-01为开始日期
-    const daysSinceStart = Math.floor((new Date() - startDate) / (1000 * 60 * 60 * 24))
-
-    const dayIndex = daysSinceStart % Math.ceil(filteredWordLibrary.length / dailyGoal)
-    const start = dayIndex * dailyGoal
-    const end = Math.min(start + dailyGoal, filteredWordLibrary.length)
-
-    return { start, end }
-  }
-
-  // 今日应学习的单词
-  const wordRange = getTodayWordRange()
-  const todayWords = filteredWordLibrary.slice(wordRange.start, wordRange.end)
 
   // 使用 ref 来避免闭包问题
   const hasCheckedAnswerRef = useRef(hasCheckedAnswer)
@@ -60,27 +37,15 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
 
   // 初始化单词
   useEffect(() => {
-    if (todayWords.length > 0) {
+    if (filteredWordLibrary.length > 0) {
       if (mode === 'learn') {
-        // 从今日应学习单词的第一个开始
         setCurrentWordIndex(0)
-        setCurrentWord(todayWords[0])
-        setTodayLearnedCount(0)
+        setCurrentWord(filteredWordLibrary[0])
       } else {
         setCurrentWord(getRandomWord())
       }
     }
-  }, [mode, todayWords, currentBook, dailyGoal])
-
-  // 重置到新单词（用于考试模式）
-  const resetToNextWord = useCallback(() => {
-    const newWord = getRandomWord(currentWord?.id)
-    setCurrentWord(newWord)
-    setUserInput('')
-    setShowResult(null)
-    setShowHint(false)
-    setHasCheckedAnswer(false)
-  }, [currentWord, getRandomWord])
+  }, [mode, filteredWordLibrary])
 
   // 虚拟键盘按键处理（未提交状态）
   const handleKeyPress = useCallback((key) => {
@@ -106,7 +71,6 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
       setShowResult('correct')
       const newStreak = progress.streak + 1
       const newCorrect = progress.correctAnswers + 1
-      const newTodayCount = todayLearnedCount + 1
 
       updateProgress({
         totalLearned: progress.totalLearned + 1,
@@ -118,27 +82,16 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         setLearnedWords([...learnedWords, currentWord.id])
       }
 
-      setTodayLearnedCount(newTodayCount)
-
-      // 检查是否完成每日目标
-      if (mode === 'learn' && newTodayCount >= dailyGoal) {
-        if (newTodayCount === dailyGoal) {
-          // 刚好完成目标
-          handleCompleteDailyGoal()
-          toast.success('🎉 恭喜完成今日学习目标！')
-        }
-      }
-
       triggerConfetti()
     } else {
-      // 答错 - 自动加入单词本
+      // 答错
       setShowResult('wrong')
       updateProgress({
         wrongAnswers: progress.wrongAnswers + 1,
         streak: 0
       })
 
-      // 自动加入单词本
+      // 自动加入错词本
       const existingMistake = mistakeBook.find(m => m.word === currentWord.word)
       if (existingMistake) {
         // 更新已有错词
@@ -166,10 +119,10 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
           wrongDate: new Date().toISOString(),
           nextReviewDate: nextReviewDate.toISOString(),
           repetitionLevel: 0
-        }])
+        }        ])
       }
     }
-  }, [currentWord, userInput, progress, learnedWords, updateProgress, setLearnedWords, mistakeBook, setMistakeBook, mode, todayLearnedCount, dailyGoal, handleCompleteDailyGoal])
+  }, [currentWord, userInput, progress, learnedWords, updateProgress, setLearnedWords, mistakeBook, setMistakeBook])
 
   // 物理键盘处理 - 使用 useCallback 避免频繁重建
   const handlePhysicalKeyboard = useCallback((e) => {
@@ -185,30 +138,20 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     if (mode === 'exam' && checked) {
       // 按空格键切换到下一个单词
       if (key === ' ') {
-        resetToNextWord()
+        nextWord()
       }
       return
     }
 
     // 学习模式
-    if (mode === 'learn' && checked) {
-      // 按空格键切换到下一个单词
+    if (mode === 'learn') {
       if (key === ' ') {
         e.preventDefault()
-        if (currentWordIndex < todayWords.length - 1) {
-          // 还有今日的单词，继续学习
-          const newIndex = currentWordIndex + 1
-          setCurrentWordIndex(newIndex)
-          setCurrentWord(todayWords[newIndex])
-          setTodayLearnedCount(newIndex + 1)
-        } else {
-          // 今日单词学完了
-          if (confirm(`恭喜！今日目标已完成！\n已学习 ${todayWords.length} 个单词\n是否继续学习？`)) {
-            const globalIndex = (filteredWordLibrary.findIndex(w => w.id === currentWord.id) + 1) % filteredWordLibrary.length
-            setCurrentWordIndex(globalIndex)
-            setCurrentWord(filteredWordLibrary[globalIndex])
-          }
-        }
+        // 切换到下一个单词
+        const nextIndex = currentWordIndex + 1
+        const newIndex = nextIndex % filteredWordLibrary.length
+        setCurrentWordIndex(newIndex)
+        setCurrentWord(filteredWordLibrary[newIndex])
         setUserInput('')
         setShowResult(null)
         setShowHint(false)
@@ -232,29 +175,29 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         handleKeyPress(key)
       }
     }
-  }, [mode, currentWordIndex, filteredWordLibrary, handleKeyPress, resetToNextWord, submitAnswer, currentBook])
+  }, [mode, currentWordIndex, filteredWordLibrary, handleKeyPress, submitAnswer])
 
   useEffect(() => {
     window.addEventListener('keydown', handlePhysicalKeyboard)
     return () => window.removeEventListener('keydown', handlePhysicalKeyboard)
   }, [handlePhysicalKeyboard])
 
-  const toggleMode = () => {
+  const toggleMode = useCallback(() => {
     setMode(prev => prev === 'learn' ? 'exam' : 'learn')
-    // 切换模式后重置状态
     setUserInput('')
     setShowResult(null)
     setShowHint(false)
     setHasCheckedAnswer(false)
-    if (mode === 'exam') {
-      // 从考试切换到学习，重置到第一个单词
-      setCurrentWordIndex(0)
-      setCurrentWord(wordLibrary[0])
-    } else {
-      // 从学习切换到考试，选择随机单词
-      setCurrentWord(getRandomWord())
-    }
-  }
+  }, [])
+
+  const resetToNextWord = useCallback(() => {
+    const newWord = getRandomWord(currentWord?.id)
+    setCurrentWord(newWord)
+    setUserInput('')
+    setShowResult(null)
+    setShowHint(false)
+    setHasCheckedAnswer(false)
+  }, [currentWord, getRandomWord])
 
   const handleWrong = useCallback(() => {
     setHasCheckedAnswer(true)
@@ -272,9 +215,9 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setHasCheckedAnswer(false)
 
     if (mode === 'learn') {
-      const newIndex = (currentWordIndex + 1) % wordLibrary.length
+      const newIndex = (currentWordIndex + 1) % filteredWordLibrary.length
       setCurrentWordIndex(newIndex)
-      setCurrentWord(wordLibrary[newIndex])
+      setCurrentWord(filteredWordLibrary[newIndex])
     } else {
       setCurrentWord(getRandomWord(currentWord?.id))
     }
@@ -287,9 +230,11 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setHasCheckedAnswer(false)
 
     if (mode === 'learn') {
-      const newIndex = (currentWordIndex - 1 + wordLibrary.length) % wordLibrary.length
+      const newIndex = (currentWordIndex - 1 + filteredWordLibrary.length) % filteredWordLibrary.length
       setCurrentWordIndex(newIndex)
-      setCurrentWord(wordLibrary[newIndex])
+      setCurrentWord(filteredWordLibrary[newIndex])
+    } else {
+      setCurrentWord(getRandomWord(currentWord?.id))
     }
   }
 
@@ -318,11 +263,17 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     return '#e5e7eb'
   }
 
-  if (!currentWord || filteredWordLibrary.length === 0) {
+  if (!currentWord) {
     return (
       <div className="container">
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
-          <h2 style={{ fontSize: '28px', marginBottom: '20px' }}>词库为空</h2>
+          <h2 style={{
+            fontSize: '28px',
+            marginBottom: '20px',
+            color: 'var(--dark)'
+          }}>
+            词库为空
+          </h2>
           <p style={{ color: 'var(--gray)', marginBottom: '30px' }}>
             请先在词库管理中添加单词
           </p>
@@ -338,7 +289,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     <div className="container fade-in">
       <nav className="navbar">
         <div className="navbar-brand">
-          <span>📚 {mode === 'learn' ? '学习模式' : '考试模式'} - {currentBook === '全部词本' ? '全部' : currentBook}</span>
+          <span>📚 {mode === 'learn' ? '学习模式' : '考试模式'}</span>
         </div>
         <div className="navbar-nav">
           <button
@@ -437,7 +388,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
                   color: 'var(--gray)',
                   fontFamily: 'Arial, sans-serif',
                   fontWeight: '400',
-                  marginBottom: '12px'
+                  marginBottom: '16px'
                 }}>
                   📢 {currentWord.phonetic}
                 </div>
@@ -449,81 +400,9 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
               }}>
                 请拼写这个单词
               </div>
-              {/* 显示占位符 */}
-              <div style={{
-                display: 'flex',
-                gap: '8px',
-                justifyContent: 'center',
-                marginBottom: '20px'
-              }}>
-                {Array(currentWord.word.length).fill(0).map((_, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      width: '40px',
-                      height: '50px',
-                      borderBottom: '3px solid var(--gray)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '24px',
-                      fontWeight: '700',
-                      color: userInput[index]
-                        ? showResult === 'correct'
-                          ? '#10b981'
-                          : showResult === 'wrong'
-                            ? '#ef4444'
-                            : 'var(--dark)'
-                        : 'var(--gray)'
-                    }}
-                  >
-                    {userInput[index] || ''}
-                  </div>
-                ))}
-              </div>
             </>
           )}
         </div>
-
-        {mode === 'learn' && (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '20px',
-            marginBottom: '40px'
-          }}>
-            <div style={{
-              display: 'flex',
-              gap: '12px',
-              flexWrap: 'wrap',
-              justifyContent: 'center'
-            }}>
-              {userInput.split('').map((char, index) => (
-                <span
-                  key={index}
-                  style={{
-                    display: 'inline-block',
-                    width: '50px',
-                    height: '60px',
-                    lineHeight: '60px',
-                    fontSize: '32px',
-                    fontWeight: '700',
-                    color: 'white',
-                    background: char === currentWord.word[index]
-                      ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                      : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                    borderRadius: '10px',
-                    textAlign: 'center',
-                    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
-                  }}
-                >
-                  {char}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
 
         {showResult === 'wrong' && (
           <div style={{
@@ -544,32 +423,41 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
               <p style={{
                 fontSize: '16px',
                 color: 'var(--gray)',
-                fontWeight: '500'
+                fontFamily: 'Arial, sans-serif',
+                fontWeight: '400'
               }}>
-                音标: {currentWord.phonetic}
+                📢 {currentWord.phonetic}
               </p>
             )}
           </div>
         )}
 
+        {showHint && mode === 'exam' && (
+          <div style={{
+            padding: '16px 24px',
+            background: 'rgba(99, 102, 241, 0.1)',
+            borderRadius: '12px',
+            marginBottom: '20px'
+          }}>
+            <p style={{ color: 'var(--primary)', fontWeight: '500', marginBottom: '8px' }}>
+              单词长度: {currentWord.word.length} 个字母
+            </p>
+            <p style={{ color: 'var(--gray)', fontSize: '14px', fontStyle: 'italic' }}>
+              例句: "{currentWord.example}"
+            </p>
+          </div>
+        )}
+
         <div style={{
           display: 'flex',
-          gap: '12px',
-          justifyContent: 'center',
-          marginBottom: '40px',
-          flexWrap: 'wrap'
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '20px',
+          marginBottom: '40px'
         }}>
           {mode === 'learn' && (
             <button className="btn btn-secondary" onClick={prevWord}>
               ← 上一个
-            </button>
-          )}
-          {mode === 'exam' && (
-            <button
-              className="btn btn-secondary"
-              onClick={() => setShowHint(!showHint)}
-            >
-              💡 {showHint ? '隐藏提示' : '显示提示'}
             </button>
           )}
           {mode === 'exam' && !hasCheckedAnswer && (
@@ -609,118 +497,141 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
           )}
         </div>
 
-        {showHint && mode === 'exam' && (
-          <div style={{
-            padding: '16px 24px',
-            background: 'rgba(99, 102, 241, 0.1)',
-            borderRadius: '12px',
-            marginBottom: '20px'
-          }}>
-            <p style={{ color: 'var(--primary)', fontWeight: '500', marginBottom: '8px' }}>
-              单词长度: {currentWord.word.length} 个字母
-            </p>
-            <p style={{ color: 'var(--gray)', fontSize: '14px', fontStyle: 'italic' }}>
-              例句: "{currentWord.example}"
-            </p>
-          </div>
-        )}
-      </div>
-
-      {mode === 'exam' && (
-        <div className="card" style={{
-          maxWidth: '700px',
-          margin: '0 auto',
-          padding: '30px'
-        }}>
-        <h3 style={{
-          textAlign: 'center',
-          marginBottom: '20px',
-          color: 'var(--dark)',
-          fontSize: '18px',
-          fontWeight: '600'
-        }}>
-          虚拟键盘
-        </h3>
-
         <div style={{
           display: 'flex',
           flexDirection: 'column',
           gap: '10px',
-          alignItems: 'center'
+          alignItems: 'center',
+          marginBottom: '20px'
         }}>
-          {keyboardRows.map((row, rowIndex) => (
-            <div key={rowIndex} style={{ display: 'flex', gap: '6px' }}>
-              {row.map((key) => (
-                <button
-                  key={key}
-                  onClick={() => handleKeyPress(key)}
+          {mode === 'learn' && (
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              flexWrap: 'wrap',
+              justifyContent: 'center'
+            }}>
+              {userInput.split('').map((char, index) => (
+                <span
+                  key={index}
                   style={{
-                    width: '48px',
-                    height: '56px',
-                    border: 'none',
+                    display: 'inline-block',
+                    width: '50px',
+                    height: '60px',
+                    lineHeight: '60px',
+                    fontSize: '32px',
+                    fontWeight: '700',
+                    color: 'white',
+                    background: char === currentWord.word[index]
+                      ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                      : 'linear-gradient(135deg, #e5e7eb 0%, #dc2626 100%)',
                     borderRadius: '10px',
-                    fontSize: '20px',
-                    fontWeight: '600',
-                    background: getKeyColor(key),
-                    color: getKeyColor(key) === '#e5e7eb' ? 'var(--dark)' : 'white',
-                    cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
+                    textAlign: 'center',
+                    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
                   }}
-                  disabled={hasCheckedAnswer}
-                  onMouseDown={(e) => e.target.style.transform = 'scale(0.95)'}
-                  onMouseUp={(e) => e.target.style.transform = 'scale(1)'}
-                  onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
                 >
-                  {key.toUpperCase()}
-                </button>
+                  {char}
+                </span>
               ))}
             </div>
-          ))}
-
-          <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
-            <button
-              onClick={() => handleKeyPress('BACK')}
-              style={{
-                width: '100px',
-                height: '56px',
-                border: 'none',
-                borderRadius: '10px',
-                fontSize: '16px',
-                fontWeight: '600',
-                background: '#e5e7eb',
-                color: 'var(--dark)',
-                cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
-              }}
-              disabled={hasCheckedAnswer}
-            >
-              ← Back
-            </button>
-            <button
-              onClick={() => handleKeyPress('SPACE')}
-              style={{
-                width: '300px',
-                height: '56px',
-                border: 'none',
-                borderRadius: '10px',
-                fontSize: '16px',
-                fontWeight: '600',
-                background: '#e5e7eb',
-                color: 'var(--dark)',
-                cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
-              }}
-              disabled={hasCheckedAnswer}
-            >
-              Space
-            </button>
-          </div>
+          )}
         </div>
+
+        {mode === 'exam' && (
+          <div className="card" style={{
+            maxWidth: '700px',
+            margin: '0 auto',
+            padding: '30px'
+          }}>
+            <h3 style={{
+              textAlign: 'center',
+              marginBottom: '20px',
+              color: 'var(--dark)',
+              fontSize: '18px',
+              fontWeight: '600'
+            }}>
+              虚拟键盘
+            </h3>
+
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+              alignItems: 'center'
+            }}>
+              {keyboardRows.map((row, rowIndex) => (
+                <div key={rowIndex} style={{ display: 'flex', gap: '6px' }}>
+                  {row.map((key) => (
+                    <button
+                      key={key}
+                      onClick={() => handleKeyPress(key)}
+                      style={{
+                        width: '48px',
+                        height: '56px',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontSize: '20px',
+                        fontWeight: '600',
+                        background: getKeyColor(key),
+                        color: getKeyColor(key) === '#e5e7eb' ? 'var(--dark)' : 'white',
+                        cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s ease',
+                        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
+                      }}
+                      disabled={hasCheckedAnswer}
+                      onMouseDown={(e) => e.target.style.transform = 'scale(0.95)'}
+                      onMouseUp={(e) => e.target.style.transform = 'scale(1)'}
+                    >
+                      {key.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: '6px', marginTop: '20px' }}>
+              <button
+                onClick={() => handleKeyPress('BACK')}
+                style={{
+                  width: '100px',
+                  height: '56px',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  background: '#e5e7eb',
+                  color: 'var(--dark)',
+                  cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
+                }}
+                disabled={hasCheckedAnswer}
+              >
+                ← Back
+              </button>
+              <button
+                onClick={() => handleKeyPress('SPACE')}
+                style={{
+                  width: '300px',
+                  height: '56px',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  background: '#e5e7eb',
+                  color: 'var(--dark)',
+                  cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
+                }}
+                disabled={hasCheckedAnswer}
+              >
+                Space
+              </button>
+            </div>
+          </div>
+        )}
       </div>
-      )}
     </div>
   )
 }
