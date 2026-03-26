@@ -245,6 +245,14 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage, currentBook,
     const saved = localStorage.getItem('localBook')
     return saved ? JSON.parse(saved) : '全部词本'
   })
+
+  // 获取当前学习词本的数量
+  const getCurrentBookWordsCount = () => {
+    if (currentBook === '全部词本') {
+      return wordLibrary.length
+    }
+    return wordLibrary.filter(w => w.bookName === currentBook).length
+  }
   const [newWord, setNewWord] = useState({ word: '', meaning: '', example: '', phonetic: '', bookName: '默认词本' })
   const [editingId, setEditingId] = useState(null)
   const [editingWord, setEditingWord] = useState({ word: '', meaning: '', example: '', phonetic: '', bookName: '默认词本' })
@@ -261,6 +269,8 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage, currentBook,
   const [newBookName, setNewBookName] = useState('')
   const [showImportModal, setShowImportModal] = useState(false)
   const [importTargetBook, setImportTargetBook] = useState('默认词本')
+  const [showTransferModal, setShowTransferModal] = useState(false)
+  const [transferTargetBook, setTransferTargetBook] = useState('默认词本')
 
   // 自动获取单词信息
   const handleAutoFetch = async (wordText) => {
@@ -550,6 +560,27 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage, currentBook,
     }
   }
 
+  const handleTransferSelected = () => {
+    if (selectedWords.length === 0) {
+      alert('请选择要转移的单词')
+      return
+    }
+    setShowTransferModal(true)
+  }
+
+  const executeTransfer = () => {
+    if (confirm(`确定要将选中的 ${selectedWords.length} 个单词转移到 "${transferTargetBook}" 吗？`)) {
+      setWordLibrary(wordLibrary.map(w =>
+        selectedWords.includes(w.id)
+          ? { ...w, bookName: transferTargetBook }
+          : w
+      ))
+      setSelectedWords([])
+      setShowTransferModal(false)
+      alert(`成功将 ${selectedWords.length} 个单词转移到 "${transferTargetBook}"`)
+    }
+  }
+
   const toggleSelectAll = () => {
     if (selectedWords.length === filteredWords.length) {
       setSelectedWords([])
@@ -626,9 +657,17 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage, currentBook,
             📤 导出词库 (CSV)
           </button>
           {selectedWords.length > 0 && (
-            <button className="btn btn-danger" onClick={handleDeleteSelected}>
-              删除选中 ({selectedWords.length})
-            </button>
+            <>
+              <button className="btn btn-primary" onClick={handleTransferSelected} style={{
+                background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+                border: '2px solid #a78bfa'
+              }}>
+                📦 转移到词本
+              </button>
+              <button className="btn btn-danger" onClick={handleDeleteSelected}>
+                删除选中 ({selectedWords.length})
+              </button>
+            </>
           )}
           <input
             type="text"
@@ -798,6 +837,75 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage, currentBook,
                   onClick={() => {
                     setShowImportModal(false)
                     setImportTargetBook('默认词本')
+                  }}
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showTransferModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div className="card" style={{ maxWidth: '400px', width: '90%' }}>
+              <h3 style={{
+                fontSize: '20px',
+                fontWeight: '700',
+                marginBottom: '20px',
+                color: 'var(--dark)'
+              }}>
+                转移单词到词本
+              </h3>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: '500',
+                  color: 'var(--dark)'
+                }}>
+                  选择目标词本
+                </label>
+                <select
+                  className="input"
+                  value={transferTargetBook}
+                  onChange={(e) => setTransferTargetBook(e.target.value)}
+                >
+                  {books.map(book => (
+                    <option key={book} value={book}>{book}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{
+                padding: '16px',
+                background: 'rgba(99, 102, 241, 0.1)',
+                borderRadius: '8px',
+                marginBottom: '20px',
+                fontSize: '14px',
+                color: 'var(--dark)'
+              }}>
+                将转移 <strong>{selectedWords.length}</strong> 个单词到 <strong>"{transferTargetBook}"</strong>
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button className="btn btn-primary" onClick={executeTransfer}>
+                  确定转移
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowTransferModal(false)
+                    setTransferTargetBook('默认词本')
                   }}
                 >
                   取消

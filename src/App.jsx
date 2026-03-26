@@ -315,6 +315,7 @@ function App() {
             points={points}
             checkInHistory={checkInHistory}
             handleCheckIn={handleCheckIn}
+            currentBook={currentBook}
           />
         )
       case 'study':

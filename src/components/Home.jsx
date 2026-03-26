@@ -1,10 +1,29 @@
 import React, { useState } from 'react'
 import toast from 'react-hot-toast'
 
-function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackupProgress, handleRestoreProgress, badgeDefinitions, dailyGoal, setDailyGoal, points, checkInHistory, handleCheckIn }) {
+function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackupProgress, handleRestoreProgress, badgeDefinitions, dailyGoal, setDailyGoal, points, checkInHistory, handleCheckIn, currentBook }) {
   const accuracy = progress.correctAnswers + progress.wrongAnswers > 0
     ? Math.round((progress.correctAnswers / (progress.correctAnswers + progress.wrongAnswers)) * 100)
     : 0
+
+  // 获取当前词本的单词数量
+  const getCurrentBookWordsCount = () => {
+    if (currentBook === '全部词本') {
+      return wordLibrary.length
+    }
+    return wordLibrary.filter(w => w.bookName === currentBook).length
+  }
+
+  // 计算预计完成天数
+  const calculateDaysToComplete = () => {
+    const totalWords = getCurrentBookWordsCount()
+    if (totalWords === 0 || dailyGoal === 0) return '∞'
+
+    const remainingWords = Math.max(0, totalWords - progress.totalLearned)
+    const daysToComplete = Math.ceil(remainingWords / dailyGoal)
+
+    return daysToComplete
+  }
 
   // 检查今日是否已打卡
   const getTodayDate = () => new Date().toISOString().split('T')[0]
@@ -217,9 +236,9 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
             <div className="stat-label">已获成就</div>
           </div>
           <div className="stat-card">
-            <div className="stat-icon">📊</div>
-            <div className="stat-value">{wordLibrary.length > 0 ? Math.min(100, Math.round((progress.totalLearned / wordLibrary.length) * 100)) : 0}%</div>
-            <div className="stat-label">词库完成度</div>
+            <div className="stat-icon">📅</div>
+            <div className="stat-value">{calculateDaysToComplete()}天</div>
+            <div className="stat-label">预计完成</div>
           </div>
           <div className="stat-card">
             <div className="stat-icon">⭐</div>
