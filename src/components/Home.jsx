@@ -17,9 +17,14 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
   // 计算预计完成天数
   const calculateDaysToComplete = () => {
     const totalWords = getCurrentBookWordsCount()
-    if (totalWords === 0 || dailyGoal === 0) return '∞'
+    if (totalWords === 0) return 0
+    if (dailyGoal === 0) return '∞'
 
     const remainingWords = Math.max(0, totalWords - progress.totalLearned)
+
+    // 如果已经学完，返回0
+    if (remainingWords === 0) return 0
+
     const daysToComplete = Math.ceil(remainingWords / dailyGoal)
 
     return daysToComplete
@@ -237,7 +242,7 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
           </div>
           <div className="stat-card">
             <div className="stat-icon">📅</div>
-            <div className="stat-value">{calculateDaysToComplete()}天</div>
+            <div className="stat-value">{typeof calculateDaysToComplete() === 'number' ? `${calculateDaysToComplete()}天` : calculateDaysToComplete()}</div>
             <div className="stat-label">预计完成</div>
           </div>
           <div className="stat-card">
