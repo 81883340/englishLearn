@@ -207,8 +207,6 @@ function App() {
             wordLibrary={wordLibrary}
             mistakeBook={mistakeBook}
             setCurrentPage={setCurrentPage}
-            currentBook={currentBook}
-            setCurrentBook={setCurrentBook}
             handleBackupProgress={handleBackupProgress}
             handleRestoreProgress={handleRestoreProgress}
           />
@@ -234,6 +232,8 @@ function App() {
             wordLibrary={wordLibrary}
             setWordLibrary={setWordLibrary}
             setCurrentPage={setCurrentPage}
+            currentBook={currentBook}
+            setCurrentBook={setCurrentBook}
           />
         )
       case 'badges':
@@ -273,8 +273,6 @@ function App() {
             wordLibrary={wordLibrary}
             mistakeBook={mistakeBook}
             setCurrentPage={setCurrentPage}
-            currentBook={currentBook}
-            setCurrentBook={setCurrentBook}
             handleBackupProgress={handleBackupProgress}
             handleRestoreProgress={handleRestoreProgress}
           />
