@@ -22,7 +22,7 @@ const triggerConfetti = () => {
   }
 }
 
-function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, progress, setCurrentPage }) {
+function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, progress, setCurrentPage, mistakeBook, setMistakeBook, currentBook, setCurrentBook, studyProgress, setStudyProgress, dailyGoal, setPoints, handleCompleteDailyGoal }) {
   const [mode, setMode] = useState('learn') // 'learn' | 'exam'
   const [currentWord, setCurrentWord] = useState(null)
   const [currentWordIndex, setCurrentWordIndex] = useState(0)
@@ -31,6 +31,8 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   const [showHint, setShowHint] = useState(false)
   const [pressedKey, setPressedKey] = useState(null)
   const [hasCheckedAnswer, setHasCheckedAnswer] = useState(false)
+  const [todayLearnedCount, setTodayLearnedCount] = useState(0)
+  const [sessionLearnedCount, setSessionLearnedCount] = useState(0)
 
   // 使用 ref 来避免闭包问题
   const hasCheckedAnswerRef = useRef(hasCheckedAnswer)
@@ -38,9 +40,41 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     hasCheckedAnswerRef.current = hasCheckedAnswer
   }, [hasCheckedAnswer])
 
+  // 根据当前选定的词本筛选单词
+  const getFilteredWordLibrary = useCallback(() => {
+    if (currentBook === '全部词本') {
+      return wordLibrary
+    }
+    return wordLibrary.filter(w => w.bookName === currentBook)
+  }, [wordLibrary, currentBook])
+
+  // 获取当前词本应该学习的单词（基于学习进度和每日目标）
+  const getTodayStudyWords = useCallback(() => {
+    const filteredLibrary = getFilteredWordLibrary()
+    if (filteredLibrary.length === 0) return []
+
+    // 获取该词本的学习进度
+    const bookProgress = studyProgress[currentBook] || { lastIndex: 0, learnedIndices: [] }
+    const startIndex = bookProgress.lastIndex || 0
+
+    // 计算今天需要学习的单词数量（每日目标减去已学数量）
+    const todayNeedCount = dailyGoal - todayLearnedCount
+    if (todayNeedCount <= 0) return []
+
+    // 从上次学习位置开始，取需要数量的单词
+    const studyWords = []
+    for (let i = 0; i < todayNeedCount && (startIndex + i) < filteredLibrary.length; i++) {
+      const wordIndex = (startIndex + i) % filteredLibrary.length
+      studyWords.push(filteredLibrary[wordIndex])
+    }
+
+    return studyWords
+  }, [getFilteredWordLibrary, studyProgress, currentBook, dailyGoal, todayLearnedCount])
+
   const getRandomWord = useCallback((excludeId = null) => {
-    const unlearned = wordLibrary.filter(w => !learnedWords.includes(w.id))
-    let pool = unlearned.length > 0 ? unlearned : wordLibrary
+    const filteredLibrary = getFilteredWordLibrary()
+    const unlearned = filteredLibrary.filter(w => !learnedWords.includes(w.id))
+    let pool = unlearned.length > 0 ? unlearned : filteredLibrary
 
     if (excludeId && pool.length > 1) {
       pool = pool.filter(w => w.id !== excludeId)
@@ -48,19 +82,24 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
 
     const randomIndex = Math.floor(Math.random() * pool.length)
     return pool[randomIndex]
-  }, [wordLibrary, learnedWords])
+  }, [wordLibrary, learnedWords, getFilteredWordLibrary])
 
   // 初始化单词
   useEffect(() => {
-    if (wordLibrary.length > 0) {
+    const filteredLibrary = getFilteredWordLibrary()
+    if (filteredLibrary.length > 0) {
       if (mode === 'learn') {
-        setCurrentWordIndex(0)
-        setCurrentWord(wordLibrary[0])
+        // 获取该词本的学习进度
+        const bookProgress = studyProgress[currentBook] || { lastIndex: 0 }
+        const startIndex = bookProgress.lastIndex || 0
+
+        setCurrentWordIndex(startIndex)
+        setCurrentWord(filteredLibrary[startIndex])
       } else {
         setCurrentWord(getRandomWord())
       }
     }
-  }, [mode, wordLibrary])
+  }, [mode, wordLibrary, currentBook, studyProgress, getFilteredWordLibrary, getRandomWord])
 
   // 重置到新单词（用于考试模式）
   const resetToNextWord = useCallback(() => {
@@ -107,6 +146,33 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         setLearnedWords([...learnedWords, currentWord.id])
       }
 
+      // 增加积分和今日学习计数
+      setPoints(prev => prev + 2)
+      setTodayLearnedCount(prev => prev + 1)
+      setSessionLearnedCount(prev => prev + 1)
+
+      // 更新词本学习进度
+      if (currentBook !== '全部词本') {
+        const filteredLibrary = getFilteredWordLibrary()
+        const currentIndex = filteredLibrary.findIndex(w => w.id === currentWord.id)
+        const newLastIndex = (currentIndex + 1) % filteredLibrary.length
+
+        setStudyProgress({
+          ...studyProgress,
+          [currentBook]: {
+            ...studyProgress[currentBook],
+            lastIndex: newLastIndex,
+            lastStudyDate: new Date().toISOString()
+          }
+        })
+      }
+
+      // 检查是否完成每日目标
+      const newTodayCount = todayLearnedCount + 1
+      if (newTodayCount >= dailyGoal) {
+        handleCompleteDailyGoal()
+      }
+
       triggerConfetti()
     } else {
       // 答错
@@ -115,8 +181,41 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         wrongAnswers: progress.wrongAnswers + 1,
         streak: 0
       })
+
+      // 考试模式下，自动加入错词本
+      if (mode === 'exam') {
+        const existingMistake = mistakeBook.find(m => m.word === currentWord.word.toLowerCase())
+
+        if (existingMistake) {
+          // 已存在，更新错误次数和时间
+          setMistakeBook(mistakeBook.map(m =>
+            m.word === currentWord.word.toLowerCase()
+              ? {
+                  ...m,
+                  wrongCount: m.wrongCount + 1,
+                  wrongDate: new Date().toISOString(),
+                  repetitionLevel: 0
+                }
+              : m
+          ))
+        } else {
+          // 新增错词
+          const newMistake = {
+            id: Date.now(),
+            word: currentWord.word.toLowerCase(),
+            meaning: currentWord.meaning,
+            example: currentWord.example,
+            phonetic: currentWord.phonetic || '',
+            wrongCount: 1,
+            wrongDate: new Date().toISOString(),
+            nextReviewDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            repetitionLevel: 0
+          }
+          setMistakeBook([...mistakeBook, newMistake])
+        }
+      }
     }
-  }, [currentWord, userInput, progress, learnedWords, updateProgress, setLearnedWords])
+  }, [currentWord, userInput, progress, learnedWords, updateProgress, setLearnedWords, mode, mistakeBook, setMistakeBook, setPoints, todayLearnedCount, setTodayLearnedCount, setSessionLearnedCount, dailyGoal, handleCompleteDailyGoal, currentBook, studyProgress, setStudyProgress, getFilteredWordLibrary])
 
   // 物理键盘处理 - 使用 useCallback 避免频繁重建
   const handlePhysicalKeyboard = useCallback((e) => {
@@ -176,6 +275,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   }, [handlePhysicalKeyboard])
 
   const toggleMode = () => {
+    const filteredLibrary = getFilteredWordLibrary()
     setMode(prev => prev === 'learn' ? 'exam' : 'learn')
     // 切换模式后重置状态
     setUserInput('')
@@ -183,9 +283,11 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setShowHint(false)
     setHasCheckedAnswer(false)
     if (mode === 'exam') {
-      // 从考试切换到学习，重置到第一个单词
-      setCurrentWordIndex(0)
-      setCurrentWord(wordLibrary[0])
+      // 从考试切换到学习，重置到该词本的第一个单词
+      const bookProgress = studyProgress[currentBook] || { lastIndex: 0 }
+      const startIndex = bookProgress.lastIndex || 0
+      setCurrentWordIndex(startIndex)
+      setCurrentWord(filteredLibrary[0])
     } else {
       // 从学习切换到考试，选择随机单词
       setCurrentWord(getRandomWord())
@@ -208,9 +310,22 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setHasCheckedAnswer(false)
 
     if (mode === 'learn') {
-      const newIndex = (currentWordIndex + 1) % wordLibrary.length
+      const filteredLibrary = getFilteredWordLibrary()
+      const newIndex = (currentWordIndex + 1) % filteredLibrary.length
       setCurrentWordIndex(newIndex)
-      setCurrentWord(wordLibrary[newIndex])
+      setCurrentWord(filteredLibrary[newIndex])
+
+      // 更新词本进度
+      if (currentBook !== '全部词本') {
+        setStudyProgress({
+          ...studyProgress,
+          [currentBook]: {
+            ...studyProgress[currentBook],
+            lastIndex: newIndex,
+            lastStudyDate: new Date().toISOString()
+          }
+        })
+      }
     } else {
       setCurrentWord(getRandomWord(currentWord?.id))
     }
@@ -223,9 +338,22 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setHasCheckedAnswer(false)
 
     if (mode === 'learn') {
-      const newIndex = (currentWordIndex - 1 + wordLibrary.length) % wordLibrary.length
+      const filteredLibrary = getFilteredWordLibrary()
+      const newIndex = (currentWordIndex - 1 + filteredLibrary.length) % filteredLibrary.length
       setCurrentWordIndex(newIndex)
-      setCurrentWord(wordLibrary[newIndex])
+      setCurrentWord(filteredLibrary[newIndex])
+
+      // 更新词本进度
+      if (currentBook !== '全部词本') {
+        setStudyProgress({
+          ...studyProgress,
+          [currentBook]: {
+            ...studyProgress[currentBook],
+            lastIndex: newIndex,
+            lastStudyDate: new Date().toISOString()
+          }
+        })
+      }
     }
   }
 
@@ -255,16 +383,26 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   }
 
   if (!currentWord) {
+    const filteredLibrary = getFilteredWordLibrary()
     return (
       <div className="container">
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
-          <h2 style={{ fontSize: '28px', marginBottom: '20px' }}>词库为空</h2>
-          <p style={{ color: 'var(--gray)', marginBottom: '30px' }}>
-            请先在词库管理中添加单词
+          <h2 style={{ fontSize: '28px', marginBottom: '20px' }}>
+            {filteredLibrary.length === 0 ? '当前词本为空' : '词库为空'}
+          </h2>
+          <p style={{ color: 'var(--gray)', marginBottom: '20px' }}>
+            {currentBook !== '全部词本' ? `当前学习词本: ${currentBook}` : '请先选择一个词本'}
           </p>
-          <button className="btn btn-primary" onClick={() => setCurrentPage('library')}>
-            去添加单词
-          </button>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '30px' }}>
+            {currentBook === '全部词本' && (
+              <button className="btn btn-primary" onClick={() => setCurrentPage('library')}>
+                去选择词本
+              </button>
+            )}
+            <button className="btn btn-primary" onClick={() => setCurrentPage('library')}>
+              去添加单词
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -289,6 +427,13 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
           >
             考试模式
           </button>
+          <button
+            className="nav-link"
+            onClick={() => setCurrentPage('library')}
+            style={{ fontSize: '13px' }}
+          >
+            📖 切换词本
+          </button>
           <button className="nav-link" onClick={() => setCurrentPage('home')}>
             返回首页
           </button>
@@ -300,7 +445,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         margin: '0 auto 40px',
         textAlign: 'center'
       }}>
-        <div style={{ marginBottom: '30px' }}>
+        <div style={{ marginBottom: '30px', display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
           <span style={{
             display: 'inline-block',
             padding: '8px 20px',
@@ -312,6 +457,32 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
           }}>
             连续正确: {progress.streak}
           </span>
+          {mode === 'learn' && (
+            <>
+              <span style={{
+                display: 'inline-block',
+                padding: '8px 20px',
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: 'white',
+                borderRadius: '20px',
+                fontSize: '14px',
+                fontWeight: '600'
+              }}>
+                今日学习: {todayLearnedCount}/{dailyGoal}
+              </span>
+              <span style={{
+                display: 'inline-block',
+                padding: '8px 20px',
+                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                color: 'white',
+                borderRadius: '20px',
+                fontSize: '14px',
+                fontWeight: '600'
+              }}>
+                当前词本: {currentBook === '全部词本' ? '全部' : currentBook}
+              </span>
+            </>
+          )}
         </div>
 
         <div style={{ marginBottom: '40px' }}>
