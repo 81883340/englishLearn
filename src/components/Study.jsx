@@ -163,7 +163,6 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
 
       setPoints(prev => prev + 2)
       setTodayLearnedCount(prev => prev + 1)
-      setSessionLearnedCount(prev => prev + 1)
 
       if (currentBook !== '全部词本') {
         const filteredLibrary = getFilteredWordLibrary()
@@ -225,7 +224,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
         }
       }
     }
-  }, [currentWord, userInput, progress, learnedWords, updateProgress, setLearnedWords, mode, mistakeBook, setMistakeBook, setPoints, todayLearnedCount, setTodayLearnedCount, setSessionLearnedCount, dailyGoal, handleCompleteDailyGoal, currentBook, studyProgress, setStudyProgress, getFilteredWordLibrary])
+  }, [currentWord, userInput, progress, learnedWords, updateProgress, setLearnedWords, mode, mistakeBook, setMistakeBook, setPoints, todayLearnedCount, setTodayLearnedCount, dailyGoal, handleCompleteDailyGoal, currentBook, studyProgress, setStudyProgress, getFilteredWordLibrary])
 
   // 物理键盘屏蔽空格
   const handlePhysicalKeyboard = useCallback((e) => {
