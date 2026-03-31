@@ -168,7 +168,11 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
 
     setHasCheckedAnswer(true)
 
-    if (userInput.toLowerCase() === currentWord.word.toLowerCase()) {
+    // 移除空格后进行比较
+    const cleanInput = userInput.replace(/\s+/g, '')
+    const cleanWord = currentWord.word.replace(/\s+/g, '')
+
+    if (cleanInput.toLowerCase() === cleanWord.toLowerCase()) {
       // 答对
       setShowResult('correct')
       const newStreak = progress.streak + 1
@@ -676,30 +680,45 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
                 justifyContent: 'center',
                 marginBottom: '20px'
               }}>
-                {Array(currentWord.word.length).fill(0).map((_, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      width: '40px',
-                      height: '50px',
-                      borderBottom: '3px solid var(--gray)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '24px',
-                      fontWeight: '700',
-                      color: userInput[index]
-                        ? showResult === 'correct'
-                          ? '#10b981'
-                          : showResult === 'wrong'
-                            ? '#ef4444'
-                            : 'var(--dark)'
-                        : 'var(--gray)'
-                    }}
-                  >
-                    {userInput[index] || ''}
-                  </div>
-                ))}
+                {currentWord.word.split('').map((char, index) => {
+                  // 如果是空格，不显示占位符
+                  if (char === ' ') return null
+
+                  // 计算实际的用户输入索引（跳过空格）
+                  let inputIndex = 0
+                  let charCount = 0
+                  for (let i = 0; i < index; i++) {
+                    if (currentWord.word[i] !== ' ') {
+                      charCount++
+                    }
+                  }
+                  inputIndex = charCount
+
+                  return (
+                    <div
+                      key={index}
+                      style={{
+                        width: '40px',
+                        height: '50px',
+                        borderBottom: '3px solid var(--gray)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '24px',
+                        fontWeight: '700',
+                        color: userInput[inputIndex]
+                          ? showResult === 'correct'
+                            ? '#10b981'
+                            : showResult === 'wrong'
+                              ? '#ef4444'
+                              : 'var(--dark)'
+                          : 'var(--gray)'
+                      }}
+                    >
+                      {userInput[inputIndex] || ''}
+                    </div>
+                  )
+                })}
               </div>
             </>
           )}

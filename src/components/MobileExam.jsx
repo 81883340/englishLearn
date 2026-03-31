@@ -78,7 +78,11 @@ function MobileExam({
 
     setHasCheckedAnswer(true)
 
-    if (userInput.toLowerCase() === currentWord.word.toLowerCase()) {
+    // 移除空格后进行比较
+    const cleanInput = userInput.replace(/\s+/g, '')
+    const cleanWord = currentWord.word.replace(/\s+/g, '')
+
+    if (cleanInput.toLowerCase() === cleanWord.toLowerCase()) {
       // 答对
       setShowResult('correct')
       const newStreak = progress.streak + 1
@@ -351,43 +355,58 @@ function MobileExam({
             justifyContent: 'center',
             marginBottom: '6px'
           }}>
-            {Array(currentWord.word.length).fill(0).map((_, index) => (
-              <div
-                key={index}
-                style={{
-                  width: '22px',
-                  height: '28px',
-                  borderBottom: `2px solid ${
-                    userInput[index]
+            {currentWord.word.split('').map((char, index) => {
+              // 如果是空格，不显示占位符
+              if (char === ' ') return null
+
+              // 计算实际的用户输入索引（跳过空格）
+              let inputIndex = 0
+              let charCount = 0
+              for (let i = 0; i < index; i++) {
+                if (currentWord.word[i] !== ' ') {
+                  charCount++
+                }
+              }
+              inputIndex = charCount
+
+              return (
+                <div
+                  key={index}
+                  style={{
+                    width: '22px',
+                    height: '28px',
+                    borderBottom: `2px solid ${
+                      userInput[inputIndex]
+                        ? showResult === 'correct'
+                          ? '#10b981'
+                          : showResult === 'wrong'
+                            ? userInput[inputIndex].toLowerCase() === currentWord.word[index].toLowerCase()
+                              ? '#10b981'
+                              : '#ef4444'
+                            : 'var(--primary)'
+                        : '#e5e7eb'
+                    }`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    color: userInput[inputIndex]
                       ? showResult === 'correct'
                         ? '#10b981'
                         : showResult === 'wrong'
-                          ? userInput[index].toLowerCase() === currentWord.word[index].toLowerCase()
+                          ? userInput[inputIndex].toLowerCase() === currentWord.word[index].toLowerCase()
                             ? '#10b981'
                             : '#ef4444'
-                          : 'var(--primary)'
-                      : '#e5e7eb'
-                  }`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '13px',
-                  fontWeight: '700',
-                  color: userInput[index]
-                    ? showResult === 'correct'
-                      ? '#10b981'
-                      : showResult === 'wrong'
-                        ? userInput[index].toLowerCase() === currentWord.word[index].toLowerCase()
-                          ? '#10b981'
-                          : '#ef4444'
-                        : 'var(--dark)'
-                    : 'var(--gray)',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                {userInput[index] || ''}
-              </div>
-            ))}
+                          : 'var(--dark)'
+                      : 'var(--gray)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {userInput[inputIndex] || ''}
+                </div>
+              )
+            })}
           </div>
 
           <input
