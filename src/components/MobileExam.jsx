@@ -16,7 +16,6 @@ function MobileExam({
   dailyGoal,
   handleCompleteDailyGoal,
   libraryUnits,
-  currentUnitIndex,
   setCurrentUnitIndex,
   getCurrentUnitWords
 }) {
@@ -39,9 +38,21 @@ function MobileExam({
 
   // 根据当前选定的词本筛选单词（使用词库单元）
   const getFilteredWordLibrary = useCallback(() => {
-    // 获取当前词库单元的单词
+    // 先根据当前词本筛选单词
+    let filteredByBook = wordLibrary
+    if (currentBook !== '全部词本') {
+      filteredByBook = wordLibrary.filter(w => w.bookName === currentBook)
+    }
+
+    // 如果有词库单元，获取当前单元的单词
     const unitWords = getCurrentUnitWords(currentBook)
-    return unitWords.length > 0 ? unitWords : wordLibrary
+
+    // 优先使用词库单元的单词，如果没有则使用筛选后的词库
+    if (unitWords && unitWords.length > 0) {
+      return unitWords
+    }
+
+    return filteredByBook
   }, [wordLibrary, currentBook, getCurrentUnitWords])
 
   const getRandomWord = useCallback((excludeId = null) => {
@@ -220,21 +231,41 @@ function MobileExam({
   }
 
   if (!currentWord) {
+    const filteredLibrary = getFilteredWordLibrary()
+    const libraryUnitsForBook = libraryUnits[currentBook] || []
+    const hasUnits = libraryUnitsForBook.length > 0
+
     return (
       <div className="container">
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <h2 style={{ fontSize: '24px', marginBottom: '20px' }}>
-            词库为空
+            {filteredLibrary.length === 0 ? '当前词本为空' : hasUnits ? '词库为空' : '请先设置学习目标'}
           </h2>
           <p style={{ color: 'var(--gray)', marginBottom: '20px' }}>
-            请先添加单词到词库
+            {!hasUnits
+              ? `当前词本 "${currentBook}" 还没有设置学习目标，请返回首页设置每日学习数量`
+              : currentBook !== '全部词本'
+                ? `当前学习词本: ${currentBook}`
+                : '请先选择一个词本'
+            }
           </p>
-          <button
-            className="btn btn-primary"
-            onClick={() => setCurrentPage('library')}
-          >
-            去添加单词
-          </button>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '30px', flexWrap: 'wrap' }}>
+            {!hasUnits && (
+              <button className="btn btn-primary" onClick={() => setCurrentPage('home')}>
+                🎯 返回首页设置目标
+              </button>
+            )}
+            {currentBook === '全部词本' && hasUnits && (
+              <button className="btn btn-primary" onClick={() => setCurrentPage('library')}>
+                去选择词本
+              </button>
+            )}
+            {filteredLibrary.length > 0 && (
+              <button className="btn btn-primary" onClick={() => setCurrentPage('library')}>
+                去添加单词
+              </button>
+            )}
+          </div>
         </div>
       </div>
     )

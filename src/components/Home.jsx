@@ -371,6 +371,16 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
             }}>
               设置每日学习目标
             </h3>
+            <div style={{
+              padding: '12px',
+              background: 'rgba(99, 102, 241, 0.1)',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              fontSize: '14px',
+              color: 'var(--primary)'
+            }}>
+              📚 当前词本: {currentBook === '全部词本' ? '全部词本' : currentBook}
+            </div>
             <div style={{ marginBottom: '20px' }}>
               <label style={{
                 display: 'block',
@@ -395,6 +405,14 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
                 color: 'var(--gray)'
               }}>
                 当前目标: {tempGoal} 个单词/天，完成后可获得 {tempGoal * 2} 积分
+              </div>
+              <div style={{
+                marginTop: '8px',
+                fontSize: '11px',
+                color: 'var(--gray)',
+                fontStyle: 'italic'
+              }}>
+                💡 设置后将自动分割词库为学习单元
               </div>
             </div>
             <div style={{ display: 'flex', gap: '12px' }}>

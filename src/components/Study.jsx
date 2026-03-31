@@ -22,7 +22,7 @@ const triggerConfetti = () => {
   }
 }
 
-function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, progress, setCurrentPage, mistakeBook, setMistakeBook, currentBook, setCurrentBook, studyProgress, setStudyProgress, dailyGoal, setPoints, handleCompleteDailyGoal, libraryUnits, currentUnitIndex, setCurrentUnitIndex, getCurrentUnitWords }) {
+function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, progress, setCurrentPage, mistakeBook, setMistakeBook, currentBook, studyProgress, setStudyProgress, dailyGoal, setPoints, handleCompleteDailyGoal, libraryUnits, setCurrentUnitIndex, getCurrentUnitWords }) {
   const [mode, setMode] = useState('learn') // 'learn' | 'exam'
   const [currentWord, setCurrentWord] = useState(null)
   const [currentWordIndex, setCurrentWordIndex] = useState(0)
@@ -32,7 +32,6 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   const [pressedKey, setPressedKey] = useState(null)
   const [hasCheckedAnswer, setHasCheckedAnswer] = useState(false)
   const [todayLearnedCount, setTodayLearnedCount] = useState(0)
-  const [sessionLearnedCount, setSessionLearnedCount] = useState(0)
   const [showUnitCompleteModal, setShowUnitCompleteModal] = useState(false)
 
   // 单词发音功能
@@ -68,9 +67,21 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   }, [hasCheckedAnswer])
 
   const getFilteredWordLibrary = useCallback(() => {
-    // 获取当前词库单元的单词
+    // 先根据当前词本筛选单词
+    let filteredByBook = wordLibrary
+    if (currentBook !== '全部词本') {
+      filteredByBook = wordLibrary.filter(w => w.bookName === currentBook)
+    }
+
+    // 如果有词库单元，获取当前单元的单词
     const unitWords = getCurrentUnitWords(currentBook)
-    return unitWords.length > 0 ? unitWords : wordLibrary
+
+    // 优先使用词库单元的单词，如果没有则使用筛选后的词库
+    if (unitWords && unitWords.length > 0) {
+      return unitWords
+    }
+
+    return filteredByBook
   }, [wordLibrary, currentBook, getCurrentUnitWords])
 
   const getRandomWord = useCallback((excludeId = null) => {
@@ -112,13 +123,6 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setShowHint(false)
     setHasCheckedAnswer(false)
   }, [currentWord, getRandomWord])
-
-  const resetCurrentWord = useCallback(() => {
-    setUserInput('')
-    setShowResult(null)
-    setShowHint(false)
-    setHasCheckedAnswer(false)
-  }, [])
 
   // 屏蔽空格输入
   const handleKeyPress = useCallback((key) => {
@@ -420,24 +424,39 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
 
   if (!currentWord) {
     const filteredLibrary = getFilteredWordLibrary()
+    const libraryUnitsForBook = libraryUnits[currentBook] || []
+    const hasUnits = libraryUnitsForBook.length > 0
+
     return (
       <div className="container">
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <h2 style={{ fontSize: '28px', marginBottom: '20px' }}>
-            {filteredLibrary.length === 0 ? '当前词本为空' : '词库为空'}
+            {filteredLibrary.length === 0 ? '当前词本为空' : hasUnits ? '词库为空' : '请先设置学习目标'}
           </h2>
           <p style={{ color: 'var(--gray)', marginBottom: '20px' }}>
-            {currentBook !== '全部词本' ? `当前学习词本: ${currentBook}` : '请先选择一个词本'}
+            {!hasUnits
+              ? `当前词本 "${currentBook}" 还没有设置学习目标，请返回首页设置每日学习数量`
+              : currentBook !== '全部词本'
+                ? `当前学习词本: ${currentBook}`
+                : '请先选择一个词本'
+            }
           </p>
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '30px' }}>
-            {currentBook === '全部词本' && (
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '30px', flexWrap: 'wrap' }}>
+            {!hasUnits && (
+              <button className="btn btn-primary" onClick={() => setCurrentPage('home')}>
+                🎯 返回首页设置目标
+              </button>
+            )}
+            {currentBook === '全部词本' && hasUnits && (
               <button className="btn btn-primary" onClick={() => setCurrentPage('library')}>
                 去选择词本
               </button>
             )}
-            <button className="btn btn-primary" onClick={() => setCurrentPage('library')}>
-              去添加单词
-            </button>
+            {filteredLibrary.length > 0 && (
+              <button className="btn btn-primary" onClick={() => setCurrentPage('library')}>
+                去添加单词
+              </button>
+            )}
           </div>
         </div>
       </div>
