@@ -278,37 +278,39 @@ function App() {
     setCurrentUnitIndex(0)
   }
 
-  // 获取当前词库单元（处理空格问题）
-  const getCurrentUnitWords = (bookName) => {
-    const cleanName = cleanBookName(bookName)
-    
-    // 尝试多种可能的键名匹配
-    const possibleKeys = [
-      bookName,           // 原始名称（可能带空格）
-      cleanName,         // 清理后的名称
-      ` ${cleanName}`,    // 前面加一个空格（匹配调试信息）
-      `${cleanName} `,    // 后面加一个空格
-      ` ${cleanName} `    // 前后都加空格
-    ]
-    
-    let units = []
-    for (const key of possibleKeys) {
-      if (libraryUnits[key]) {
-        units = libraryUnits[key]
-        console.log(`Found units for key: "${key}" (original: "${bookName}")`)
-        break
+  // 使用 useMemo 避免构建时的变量压缩冲突
+  const getCurrentUnitWords = React.useMemo(() => {
+    return (bookName) => {
+      const cleanName = cleanBookName(bookName)
+      
+      // 尝试多种可能的键名匹配
+      const possibleKeys = [
+        bookName,           // 原始名称（可能带空格）
+        cleanName,         // 清理后的名称
+        ` ${cleanName}`,    // 前面加一个空格（匹配调试信息）
+        `${cleanName} `,    // 后面加一个空格
+        ` ${cleanName} `    // 前后都加空格
+      ]
+      
+      let units = []
+      for (const key of possibleKeys) {
+        if (libraryUnits[key]) {
+          units = libraryUnits[key]
+          console.log(`Found units for key: "${key}" (original: "${bookName}")`)
+          break
+        }
       }
-    }
-    
-    const currentIndex = currentUnitIndex
+      
+      const currentIndex = currentUnitIndex
 
-    if (currentIndex < units.length) {
-      return units[currentIndex]
-    }
+      if (currentIndex < units.length) {
+        return units[currentIndex]
+      }
 
-    console.log(`No units found for book: "${bookName}", cleaned: "${cleanName}", currentIndex: ${currentIndex}`)
-    return []
-  }
+      console.log(`No units found for book: "${bookName}", cleaned: "${cleanName}", currentIndex: ${currentIndex}`)
+      return []
+    }
+  }, [libraryUnits, currentUnitIndex, cleanBookName])
 
   const updateProgress = (newProgress) => {
     const updated = { ...progress, ...newProgress }
