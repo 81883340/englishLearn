@@ -356,8 +356,21 @@ function MobileExam({
             marginBottom: '6px'
           }}>
             {currentWord.word.split('').map((char, index) => {
-              // 如果是空格，不显示占位符
-              if (char === ' ') return null
+              // 如果是空格，显示空占位符（没有下划线）
+              if (char === ' ') {
+                return (
+                  <div
+                    key={index}
+                    style={{
+                      width: '10px',
+                      height: '28px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  />
+                )
+              }
 
               // 计算实际的用户输入索引（跳过空格）
               let inputIndex = 0
