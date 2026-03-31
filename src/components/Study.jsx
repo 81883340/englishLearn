@@ -22,7 +22,7 @@ const triggerConfetti = () => {
   }
 }
 
-function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, progress, setCurrentPage, mistakeBook, setMistakeBook, currentBook, setCurrentBook, studyProgress, setStudyProgress, dailyGoal, setPoints, handleCompleteDailyGoal }) {
+function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, progress, setCurrentPage, mistakeBook, setMistakeBook, currentBook, setCurrentBook, studyProgress, setStudyProgress, dailyGoal, setPoints, handleCompleteDailyGoal, libraryUnits, currentUnitIndex, setCurrentUnitIndex, getCurrentUnitWords }) {
   const [mode, setMode] = useState('learn') // 'learn' | 'exam'
   const [currentWord, setCurrentWord] = useState(null)
   const [currentWordIndex, setCurrentWordIndex] = useState(0)
@@ -33,6 +33,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   const [hasCheckedAnswer, setHasCheckedAnswer] = useState(false)
   const [todayLearnedCount, setTodayLearnedCount] = useState(0)
   const [sessionLearnedCount, setSessionLearnedCount] = useState(0)
+  const [showUnitCompleteModal, setShowUnitCompleteModal] = useState(false)
 
   // 单词发音功能
   const speakWord = (word) => {
@@ -67,39 +68,23 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
   }, [hasCheckedAnswer])
 
   const getFilteredWordLibrary = useCallback(() => {
-    if (currentBook === '全部词本') {
-      return wordLibrary
-    }
-    return wordLibrary.filter(w => w.bookName === currentBook)
-  }, [wordLibrary, currentBook])
-
-  const getTodayStudyWords = useCallback(() => {
-    const filteredLibrary = getFilteredWordLibrary()
-    if (filteredLibrary.length === 0) return []
-
-    const bookProgress = studyProgress[currentBook] || { lastIndex: 0, learnedIndices: [] }
-    const startIndex = bookProgress.lastIndex || 0
-
-    const todayNeedCount = dailyGoal - todayLearnedCount
-    if (todayNeedCount <= 0) return []
-
-    const studyWords = []
-    for (let i = 0; i < todayNeedCount && (startIndex + i) < filteredLibrary.length; i++) {
-      const wordIndex = (startIndex + i) % filteredLibrary.length
-      studyWords.push(filteredLibrary[wordIndex])
-    }
-
-    return studyWords
-  }, [getFilteredWordLibrary, studyProgress, currentBook, dailyGoal, todayLearnedCount])
+    // 获取当前词库单元的单词
+    const unitWords = getCurrentUnitWords(currentBook)
+    return unitWords.length > 0 ? unitWords : wordLibrary
+  }, [wordLibrary, currentBook, getCurrentUnitWords])
 
   const getRandomWord = useCallback((excludeId = null) => {
     const filteredLibrary = getFilteredWordLibrary()
+    if (!filteredLibrary || filteredLibrary.length === 0) return null
+
     const unlearned = filteredLibrary.filter(w => !learnedWords.includes(w.id))
     let pool = unlearned.length > 0 ? unlearned : filteredLibrary
 
     if (excludeId && pool.length > 1) {
       pool = pool.filter(w => w.id !== excludeId)
     }
+
+    if (pool.length === 0) return null
 
     const randomIndex = Math.floor(Math.random() * pool.length)
     return pool[randomIndex]
@@ -194,6 +179,8 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
       const newTodayCount = todayLearnedCount + 1
       if (newTodayCount >= dailyGoal) {
         handleCompleteDailyGoal()
+        // 显示单元完成弹窗
+        setTimeout(() => setShowUnitCompleteModal(true), 1500)
       }
 
       triggerConfetti()
@@ -659,8 +646,8 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
                     }}>
                       {/* 字母超大 */}
                       <div style={{
-                        fontSize: '44px',
-                        fontWeight: 700,
+                        fontSize: '60px',
+                        fontWeight: 900,
                         height: '52px',
                         lineHeight: '1',
                         color: userInput[inputIndex]
@@ -753,29 +740,117 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
           </div>
         )}
 
-        {showResult === 'correct' && (
-          <div style={{
-            padding: '20px',
-            background: 'rgba(16, 185, 129, 0.1)',
-            borderRadius: '12px',
-            marginBottom: '20px'
+      {showResult === 'correct' && (
+        <div style={{
+          padding: '20px',
+          background: 'rgba(16, 185, 129, 0.1)',
+          borderRadius: '12px',
+          marginBottom: '20px'
+        }}>
+          <p style={{
+            fontSize: '20px',
+            color: '#10b981',
+            fontWeight: '600',
+            marginBottom: '10px'
           }}>
-            <p style={{
-              fontSize: '20px',
-              color: '#10b981',
-              fontWeight: '600',
-              marginBottom: '10px'
+            ✓ 回答正确！
+          </p>
+          <p style={{
+            fontSize: '14px',
+            color: 'var(--gray)'
+          }}>
+            按空格键继续下一题
+          </p>
+        </div>
+      )}
+
+      {/* 单元完成弹窗 */}
+      {showUnitCompleteModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div className="card" style={{ maxWidth: '400px', width: '90%', textAlign: 'center' }}>
+            <div style={{ fontSize: '60px', marginBottom: '16px' }}>🎉</div>
+            <h3 style={{
+              fontSize: '24px',
+              fontWeight: '700',
+              marginBottom: '12px',
+              color: 'var(--dark)'
             }}>
-              ✓ 回答正确！
-            </p>
+              今日学习完成！
+            </h3>
             <p style={{
-              fontSize: '14px',
-              color: 'var(--gray)'
+              fontSize: '16px',
+              color: 'var(--gray)',
+              marginBottom: '24px'
             }}>
-              按空格键继续下一题
+              恭喜你完成了 {dailyGoal} 个单词的学习
             </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  setShowUnitCompleteModal(false)
+                  setTodayLearnedCount(0)
+                  setCurrentWordIndex(0)
+                  // 重置当前单元
+                  setUserInput('')
+                  setShowResult(null)
+                  setShowHint(false)
+                  setHasCheckedAnswer(false)
+                  const filteredLibrary = getFilteredWordLibrary()
+                  if (filteredLibrary.length > 0) {
+                    setCurrentWord(filteredLibrary[0])
+                  }
+                }}
+              >
+                🔄 重学当前单元
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setShowUnitCompleteModal(false)
+                  setTodayLearnedCount(0)
+                  setCurrentWordIndex(0)
+                  // 进入下一个单元
+                  setCurrentUnitIndex(prev => prev + 1)
+                  setUserInput('')
+                  setShowResult(null)
+                  setShowHint(false)
+                  setHasCheckedAnswer(false)
+                  const nextUnitWords = getCurrentUnitWords(currentBook)
+                  if (nextUnitWords.length > 0) {
+                    setCurrentWord(nextUnitWords[0])
+                  } else {
+                    toast.success('所有单元已完成！')
+                    setCurrentPage('home')
+                  }
+                }}
+              >
+                📖 学习新单元
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setShowUnitCompleteModal(false)
+                  setCurrentPage('home')
+                }}
+              >
+                🏠 返回首页
+              </button>
+            </div>
           </div>
-        )}
+        </div>
+      )}
 
         <div style={{
           display: 'flex',

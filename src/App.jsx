@@ -87,6 +87,16 @@ function App() {
     safeLoadFromStorage('studyProgress', {})
   )
 
+  // 保存词库分割信息（每个词本被分割成的单元）
+  const [libraryUnits, setLibraryUnits] = useState(() =>
+    safeLoadFromStorage('libraryUnits', {})
+  )
+
+  // 保存当前学习的单元索引
+  const [currentUnitIndex, setCurrentUnitIndex] = useState(() =>
+    safeLoadFromStorage('currentUnitIndex', 0)
+  )
+
   // 学习目标和积分系统
   const [dailyGoal, setDailyGoal] = useState(() =>
     safeLoadFromStorage('dailyGoal', 20)
@@ -154,6 +164,22 @@ function App() {
 
   useEffect(() => {
     try {
+      localStorage.setItem('libraryUnits', JSON.stringify(libraryUnits))
+    } catch (error) {
+      console.error('Failed to save libraryUnits:', error)
+    }
+  }, [libraryUnits])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('currentUnitIndex', currentUnitIndex)
+    } catch (error) {
+      console.error('Failed to save currentUnitIndex:', error)
+    }
+  }, [currentUnitIndex])
+
+  useEffect(() => {
+    try {
       localStorage.setItem('dailyGoal', dailyGoal)
     } catch (error) {
       console.error('Failed to save dailyGoal:', error)
@@ -214,6 +240,49 @@ function App() {
     setPoints(points + totalBonus)
     toast.success(message)
     triggerConfetti()
+  }
+
+  // 分割词库为多个单元
+  const splitLibraryIntoUnits = (bookName, words, unitSize) => {
+    const units = []
+    for (let i = 0; i < words.length; i += unitSize) {
+      units.push(words.slice(i, i + unitSize))
+    }
+    return units
+  }
+
+  // 设置每日目标时自动分割词库
+  const handleSetDailyGoal = (goal) => {
+    setDailyGoal(goal)
+    toast.success(`每日目标已设置为 ${goal} 个单词`)
+
+    // 重新分割所有词本
+    const newLibraryUnits = {}
+    const allBooks = ['全部词本', ...new Set(wordLibrary.map(w => w.bookName))]
+
+    allBooks.forEach(bookName => {
+      if (bookName === '全部词本') {
+        newLibraryUnits[bookName] = splitLibraryIntoUnits(bookName, wordLibrary, goal)
+      } else {
+        const bookWords = wordLibrary.filter(w => w.bookName === bookName)
+        newLibraryUnits[bookName] = splitLibraryIntoUnits(bookName, bookWords, goal)
+      }
+    })
+
+    setLibraryUnits(newLibraryUnits)
+    setCurrentUnitIndex(0)
+  }
+
+  // 获取当前词库单元
+  const getCurrentUnitWords = (bookName) => {
+    const units = libraryUnits[bookName] || []
+    const currentIndex = currentUnitIndex
+
+    if (currentIndex < units.length) {
+      return units[currentIndex]
+    }
+
+    return []
   }
 
   const updateProgress = (newProgress) => {
@@ -328,6 +397,7 @@ function App() {
             points={points}
             checkInHistory={checkInHistory}
             currentBook={currentBook}
+            handleSetDailyGoal={handleSetDailyGoal}
           />
         )
       case 'study':
@@ -348,6 +418,10 @@ function App() {
             dailyGoal={dailyGoal}
             setPoints={setPoints}
             handleCompleteDailyGoal={handleCompleteDailyGoal}
+            libraryUnits={libraryUnits}
+            currentUnitIndex={currentUnitIndex}
+            setCurrentUnitIndex={setCurrentUnitIndex}
+            getCurrentUnitWords={getCurrentUnitWords}
           />
         )
       case 'library':
@@ -405,6 +479,10 @@ function App() {
             setPoints={setPoints}
             dailyGoal={dailyGoal}
             handleCompleteDailyGoal={handleCompleteDailyGoal}
+            libraryUnits={libraryUnits}
+            currentUnitIndex={currentUnitIndex}
+            setCurrentUnitIndex={setCurrentUnitIndex}
+            getCurrentUnitWords={getCurrentUnitWords}
           />
         )
       default:

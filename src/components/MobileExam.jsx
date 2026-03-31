@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import triggerConfetti from '../utils/confetti'
+import toast from 'react-hot-toast'
 
 function MobileExam({
   wordLibrary,
@@ -13,7 +14,11 @@ function MobileExam({
   currentBook,
   setPoints,
   dailyGoal,
-  handleCompleteDailyGoal
+  handleCompleteDailyGoal,
+  libraryUnits,
+  currentUnitIndex,
+  setCurrentUnitIndex,
+  getCurrentUnitWords
 }) {
   const [currentWord, setCurrentWord] = useState(null)
   const [userInput, setUserInput] = useState('')
@@ -21,6 +26,8 @@ function MobileExam({
   const [showHint, setShowHint] = useState(false)
   const [hasCheckedAnswer, setHasCheckedAnswer] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
+  const [todayLearnedCount, setTodayLearnedCount] = useState(0)
+  const [showUnitCompleteModal, setShowUnitCompleteModal] = useState(false)
   const inputRef = useRef(null)
 
   // 自动聚焦到输入框
@@ -30,13 +37,12 @@ function MobileExam({
     }
   }, [hasCheckedAnswer, currentWord])
 
-  // 根据当前选定的词本筛选单词
+  // 根据当前选定的词本筛选单词（使用词库单元）
   const getFilteredWordLibrary = useCallback(() => {
-    if (currentBook === '全部词本') {
-      return wordLibrary
-    }
-    return wordLibrary.filter(w => w.bookName === currentBook)
-  }, [wordLibrary, currentBook])
+    // 获取当前词库单元的单词
+    const unitWords = getCurrentUnitWords(currentBook)
+    return unitWords.length > 0 ? unitWords : wordLibrary
+  }, [wordLibrary, currentBook, getCurrentUnitWords])
 
   const getRandomWord = useCallback((excludeId = null) => {
     const filteredLibrary = getFilteredWordLibrary()
@@ -101,6 +107,20 @@ function MobileExam({
       // 增加积分
       setPoints(prev => prev + 2)
 
+      // 增加今日学习计数
+      const newTodayCount = todayLearnedCount + 1
+      setTodayLearnedCount(newTodayCount)
+
+      // 检查是否完成每日目标
+      if (newTodayCount >= dailyGoal) {
+        handleCompleteDailyGoal()
+        setTimeout(() => {
+          setShowUnitCompleteModal(true)
+        }, 1500)
+      } else {
+        triggerConfetti()
+      }
+
       // 加入错词本
       const existingMistake = mistakeBook.find(m => m.word === currentWord.word.toLowerCase())
 
@@ -132,7 +152,6 @@ function MobileExam({
         setMistakeBook([...mistakeBook, newMistake])
       }
 
-      // 检查是否完成每日目标
       triggerConfetti()
       setTimeout(() => {
         nextWord()
@@ -605,6 +624,99 @@ function MobileExam({
           )}
         </div>
       </div>
+
+      {/* 单元完成弹窗 */}
+      {showUnitCompleteModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div className="card" style={{ maxWidth: '400px', width: '100%', textAlign: 'center' }}>
+            <div style={{ fontSize: '60px', marginBottom: '16px' }}>🎉</div>
+            <h3 style={{
+              fontSize: '24px',
+              fontWeight: '700',
+              marginBottom: '12px',
+              color: 'var(--dark)'
+            }}>
+              今日学习完成！
+            </h3>
+            <p style={{
+              fontSize: '16px',
+              color: 'var(--gray)',
+              marginBottom: '24px'
+            }}>
+              恭喜你完成了 {dailyGoal} 个单词的学习
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  setShowUnitCompleteModal(false)
+                  setTodayLearnedCount(0)
+                  // 重置当前单元
+                  setUserInput('')
+                  setShowResult(null)
+                  setShowHint(false)
+                  setHasCheckedAnswer(false)
+                  const filteredLibrary = getFilteredWordLibrary()
+                  if (filteredLibrary.length > 0) {
+                    setCurrentWord(filteredLibrary[0])
+                  }
+                  if (inputRef.current) {
+                    inputRef.current.focus()
+                  }
+                }}
+              >
+                🔄 重学当前单元
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setShowUnitCompleteModal(false)
+                  setTodayLearnedCount(0)
+                  // 进入下一个单元
+                  setCurrentUnitIndex(prev => prev + 1)
+                  setUserInput('')
+                  setShowResult(null)
+                  setShowHint(false)
+                  setHasCheckedAnswer(false)
+                  const nextUnitWords = getCurrentUnitWords(currentBook)
+                  if (nextUnitWords.length > 0) {
+                    setCurrentWord(nextUnitWords[0])
+                  } else {
+                    toast.success('所有单元已完成！')
+                    setCurrentPage('home')
+                  }
+                  if (inputRef.current) {
+                    inputRef.current.focus()
+                  }
+                }}
+              >
+                📖 学习新单元
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setShowUnitCompleteModal(false)
+                  setCurrentPage('home')
+                }}
+              >
+                🏠 返回首页
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes fade-in {

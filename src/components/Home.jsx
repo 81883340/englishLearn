@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
-import toast from 'react-hot-toast'
 
-function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackupProgress, handleRestoreProgress, badgeDefinitions, dailyGoal, setDailyGoal, points, checkInHistory, currentBook }) {
+function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackupProgress, handleRestoreProgress, dailyGoal, points, checkInHistory, currentBook, handleSetDailyGoal }) {
   const accuracy = progress.correctAnswers + progress.wrongAnswers > 0
     ? Math.round((progress.correctAnswers / (progress.correctAnswers + progress.wrongAnswers)) * 100)
     : 0
@@ -402,9 +401,8 @@ function Home({ progress, wordLibrary, mistakeBook, setCurrentPage, handleBackup
               <button
                 className="btn btn-primary"
                 onClick={() => {
-                  setDailyGoal(tempGoal)
+                  handleSetDailyGoal(tempGoal)
                   setShowGoalModal(false)
-                  toast.success(`每日目标已设置为 ${tempGoal} 个单词`)
                 }}
                 style={{ flex: 1 }}
               >
