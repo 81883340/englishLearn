@@ -233,34 +233,70 @@ function MobileExam({
   if (!currentWord) {
     const filteredLibrary = getFilteredWordLibrary()
     const libraryUnitsForBook = libraryUnits[currentBook] || []
+    const unitWords = getCurrentUnitWords(currentBook)
+    
+    // 更精确的判断逻辑
     const hasUnits = libraryUnitsForBook.length > 0
+    const hasUnitWords = unitWords && unitWords.length > 0
+    const hasFilteredWords = filteredLibrary && filteredLibrary.length > 0
+    
+    // 调试信息（可选）
+    console.log('Debug - MobileExam Component:', {
+      currentBook,
+      libraryUnitsForBookLength: libraryUnitsForBook.length,
+      unitWordsLength: unitWords ? unitWords.length : 0,
+      filteredLibraryLength: filteredLibrary ? filteredLibrary.length : 0,
+      hasUnits,
+      hasUnitWords,
+      hasFilteredWords
+    })
+
+    let title = ''
+    let message = ''
+    let showSetGoalButton = false
+    let showSelectBookButton = false
+    let showAddWordsButton = false
+
+    if (!hasFilteredWords) {
+      title = '当前词本为空'
+      message = currentBook !== '全部词本' ? `当前词本 "${currentBook}" 中没有单词，请先添加单词` : '词库中没有单词，请先添加单词'
+      showAddWordsButton = true
+    } else if (!hasUnits) {
+      title = '请先设置学习目标'
+      message = `当前词本 "${currentBook}" 还没有设置学习目标，请返回首页设置每日学习数量`
+      showSetGoalButton = true
+    } else if (!hasUnitWords) {
+      title = '词库单元为空'
+      message = `当前词本 "${currentBook}" 的词库单元为空，请检查学习目标设置或重新设置目标`
+      showSetGoalButton = true
+    } else {
+      // 理论上不应该到这里，因为前面的条件都没满足的话应该能获取到单词
+      title = '未知错误'
+      message = '无法加载学习内容，请刷新页面重试'
+      showSetGoalButton = true
+    }
 
     return (
       <div className="container">
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <h2 style={{ fontSize: '24px', marginBottom: '20px' }}>
-            {filteredLibrary.length === 0 ? '当前词本为空' : hasUnits ? '词库为空' : '请先设置学习目标'}
+            {title}
           </h2>
           <p style={{ color: 'var(--gray)', marginBottom: '20px' }}>
-            {!hasUnits
-              ? `当前词本 "${currentBook}" 还没有设置学习目标，请返回首页设置每日学习数量`
-              : currentBook !== '全部词本'
-                ? `当前学习词本: ${currentBook}`
-                : '请先选择一个词本'
-            }
+            {message}
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '30px', flexWrap: 'wrap' }}>
-            {!hasUnits && (
+            {showSetGoalButton && (
               <button className="btn btn-primary" onClick={() => setCurrentPage('home')}>
                 🎯 返回首页设置目标
               </button>
             )}
-            {currentBook === '全部词本' && hasUnits && (
+            {showSelectBookButton && (
               <button className="btn btn-primary" onClick={() => setCurrentPage('library')}>
                 去选择词本
               </button>
             )}
-            {filteredLibrary.length > 0 && (
+            {showAddWordsButton && (
               <button className="btn btn-primary" onClick={() => setCurrentPage('library')}>
                 去添加单词
               </button>
