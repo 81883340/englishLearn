@@ -11,8 +11,7 @@ import SpacedRepetition from './components/SpacedRepetition'
 import MobileExam from './components/MobileExam'
 import './App.css'
 
-// 全局变量存储函数引用，避免构建时依赖问题
-let globalGetCurrentUnitWords = null
+
 
 // 安全地从 localStorage 读取数据，带错误处理
 const safeLoadFromStorage = (key, defaultValue) => {
@@ -46,39 +45,7 @@ const cleanBookName = (bookName) => {
   return bookName ? bookName.trim() : bookName
 }
 
-// 获取当前词库单元（移到组件外部，使用闭包访问状态）
-const createGetCurrentUnitWords = (getLibraryUnits, getCurrentUnitIndex) => {
-  return (bookName) => {
-    const libraryUnits = getLibraryUnits()
-    const currentUnitIndex = getCurrentUnitIndex()
-    const cleanName = cleanBookName(bookName)
-    
-    // 尝试多种可能的键名匹配
-    const possibleKeys = [
-      bookName,           // 原始名称（可能带空格）
-      cleanName,         // 清理后的名称
-      ` ${cleanName}`,    // 前面加一个空格（匹配调试信息）
-      `${cleanName} `,    // 后面加一个空格
-      ` ${cleanName} `    // 前后都加空格
-    ]
-    
-    let units = []
-    for (const key of possibleKeys) {
-      if (libraryUnits[key]) {
-        units = libraryUnits[key]
-        console.log(`Found units for key: "${key}" (original: "${bookName}")`)
-        break
-      }
-    }
-    
-    if (currentUnitIndex < units.length) {
-      return units[currentUnitIndex]
-    }
 
-    console.log(`No units found for book: "${bookName}", cleaned: "${cleanName}", currentIndex: ${currentUnitIndex}`)
-    return []
-  }
-}
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home')
@@ -244,10 +211,7 @@ function App() {
     }
   }, [checkInHistory])
 
-  // 清理词本名称的前后空格
-  const cleanBookName = (bookName) => {
-    return bookName ? bookName.trim() : bookName
-  }
+  
 
   // 检查今日是否已打卡
   const getTodayDate = () => new Date().toISOString().split('T')[0]
@@ -320,39 +284,35 @@ function App() {
     setCurrentUnitIndex(0)
   }
 
-  // 使用 useMemo 避免构建时的变量压缩冲突
-  const getCurrentUnitWords = React.useMemo(() => {
-    return (bookName) => {
-      const cleanName = cleanBookName(bookName)
-      
-      // 尝试多种可能的键名匹配
-      const possibleKeys = [
-        bookName,           // 原始名称（可能带空格）
-        cleanName,         // 清理后的名称
-        ` ${cleanName}`,    // 前面加一个空格（匹配调试信息）
-        `${cleanName} `,    // 后面加一个空格
-        ` ${cleanName} `    // 前后都加空格
-      ]
-      
-      let units = []
-      for (const key of possibleKeys) {
-        if (libraryUnits[key]) {
-          units = libraryUnits[key]
-          console.log(`Found units for key: "${key}" (original: "${bookName}")`)
-          break
-        }
+  // 获取当前词库单元
+  const getCurrentUnitWords = (bookName) => {
+    const cleanName = cleanBookName(bookName)
+    
+    // 尝试多种可能的键名匹配
+    const possibleKeys = [
+      bookName,           // 原始名称（可能带空格）
+      cleanName,         // 清理后的名称
+      ` ${cleanName}`,    // 前面加一个空格（匹配调试信息）
+      `${cleanName} `,    // 后面加一个空格
+      ` ${cleanName} `    // 前后都加空格
+    ]
+    
+    let units = []
+    for (const key of possibleKeys) {
+      if (libraryUnits[key]) {
+        units = libraryUnits[key]
+        console.log(`Found units for key: "${key}" (original: "${bookName}")`)
+        break
       }
-      
-      const currentIndex = currentUnitIndex
-
-      if (currentIndex < units.length) {
-        return units[currentIndex]
-      }
-
-      console.log(`No units found for book: "${bookName}", cleaned: "${cleanName}", currentIndex: ${currentIndex}`)
-      return []
     }
-  }, [libraryUnits, currentUnitIndex, cleanBookName])
+    
+    if (currentUnitIndex < units.length) {
+      return units[currentUnitIndex]
+    }
+
+    console.log(`No units found for book: "${bookName}", cleaned: "${cleanName}", currentIndex: ${currentUnitIndex}`)
+    return []
+  }
 
   const updateProgress = (newProgress) => {
     const updated = { ...progress, ...newProgress }
