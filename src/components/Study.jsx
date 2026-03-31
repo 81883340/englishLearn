@@ -634,67 +634,54 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
                 请拼写这个单词
               </div>
 
-              {/* 👇 优化后的拼写区域：字母更大、间距更小、更协调 */}
+              {/* ====================== 最终美化版拼写区域 ====================== */}
               <div style={{
                 display: 'flex',
-                gap: '8px',
+                gap: '1px',          // 字母几乎贴在一起
                 justifyContent: 'center',
-                marginBottom: '30px',
-                flexWrap: 'wrap',
-                padding: '10px',
-                alignItems: 'flex-end'
+                alignItems: 'flex-end',
+                marginBottom: '30px'
               }}>
                 {currentWord.word.split('').map((char, index) => {
-                  if (char === ' ') {
-                    return (
-                      <div
-                        key={index}
-                        style={{
-                          width: '16px',
-                          height: '64px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}
-                      />
-                    )
-                  }
+                  if (char === ' ') return <div key={index} style={{ width: '10px' }} />
 
                   let inputIndex = 0
-                  let charCount = 0
                   for (let i = 0; i < index; i++) {
-                    if (currentWord.word[i] !== ' ') {
-                      charCount++
-                    }
+                    if (currentWord.word[i] !== ' ') inputIndex++
                   }
-                  inputIndex = charCount
 
                   return (
-                    <div
-                      key={index}
-                      style={{
-                        width: '48px',
-                        height: '64px',
-                        borderBottom: '3px solid #d1d5db',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '36px',
-                        fontWeight: '700',
+                    <div key={index} style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '2px'
+                    }}>
+                      {/* 字母超大 */}
+                      <div style={{
+                        fontSize: '44px',
+                        fontWeight: 700,
+                        height: '52px',
+                        lineHeight: '1',
                         color: userInput[inputIndex]
-                          ? showResult === 'correct'
-                            ? '#10b981'
-                            : showResult === 'wrong'
-                              ? '#ef4444'
-                              : '#1f2937'
-                          : '#9ca3af'
-                      }}
-                    >
-                      {userInput[inputIndex] || ''}
+                          ? showResult === 'correct' ? '#10b981' : showResult === 'wrong' ? '#ef4444' : '#111'
+                          : '#ccc'
+                      }}>
+                        {userInput[inputIndex] || ''}
+                      </div>
+                      {/* 下划线极短 */}
+                      <div style={{
+                        width: '20px',
+                        height: '2px',
+                        backgroundColor: userInput[inputIndex]
+                          ? showResult === 'correct' ? '#10b981' : showResult === 'wrong' ? '#ef4444' : '#999'
+                          : '#eee'
+                      }} />
                     </div>
                   )
                 })}
               </div>
+              {/* ================================================================= */}
             </>
           )}
         </div>
