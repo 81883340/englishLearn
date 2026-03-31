@@ -11,6 +11,9 @@ import SpacedRepetition from './components/SpacedRepetition'
 import MobileExam from './components/MobileExam'
 import './App.css'
 
+// 全局变量存储函数引用，避免构建时依赖问题
+let globalGetCurrentUnitWords = null
+
 // 安全地从 localStorage 读取数据，带错误处理
 const safeLoadFromStorage = (key, defaultValue) => {
   try {
@@ -35,6 +38,45 @@ const safeLoadString = (key, defaultValue) => {
     console.error(`Failed to load ${key} from storage:`, error)
     localStorage.removeItem(key)
     return defaultValue
+  }
+}
+
+// 清理词本名称的前后空格（移到组件外部）
+const cleanBookName = (bookName) => {
+  return bookName ? bookName.trim() : bookName
+}
+
+// 获取当前词库单元（移到组件外部，使用闭包访问状态）
+const createGetCurrentUnitWords = (getLibraryUnits, getCurrentUnitIndex) => {
+  return (bookName) => {
+    const libraryUnits = getLibraryUnits()
+    const currentUnitIndex = getCurrentUnitIndex()
+    const cleanName = cleanBookName(bookName)
+    
+    // 尝试多种可能的键名匹配
+    const possibleKeys = [
+      bookName,           // 原始名称（可能带空格）
+      cleanName,         // 清理后的名称
+      ` ${cleanName}`,    // 前面加一个空格（匹配调试信息）
+      `${cleanName} `,    // 后面加一个空格
+      ` ${cleanName} `    // 前后都加空格
+    ]
+    
+    let units = []
+    for (const key of possibleKeys) {
+      if (libraryUnits[key]) {
+        units = libraryUnits[key]
+        console.log(`Found units for key: "${key}" (original: "${bookName}")`)
+        break
+      }
+    }
+    
+    if (currentUnitIndex < units.length) {
+      return units[currentUnitIndex]
+    }
+
+    console.log(`No units found for book: "${bookName}", cleaned: "${cleanName}", currentIndex: ${currentUnitIndex}`)
+    return []
   }
 }
 
