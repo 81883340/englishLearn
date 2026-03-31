@@ -135,7 +135,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     setHasCheckedAnswer(false)
   }, [])
 
-  // 👇 这里屏蔽了空格，完全禁止输入
+  // 屏蔽空格输入
   const handleKeyPress = useCallback((key) => {
     if (hasCheckedAnswerRef.current) return
 
@@ -230,13 +230,13 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
             nextReviewDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
             repetitionLevel: 0
           }
-          setMistakeBook([mistakeBook, newMistake])
+          setMistakeBook([...mistakeBook, newMistake])
         }
       }
     }
   }, [currentWord, userInput, progress, learnedWords, updateProgress, setLearnedWords, mode, mistakeBook, setMistakeBook, setPoints, todayLearnedCount, setTodayLearnedCount, setSessionLearnedCount, dailyGoal, handleCompleteDailyGoal, currentBook, studyProgress, setStudyProgress, getFilteredWordLibrary])
 
-  // 👇 物理键盘也屏蔽空格输入
+  // 物理键盘屏蔽空格
   const handlePhysicalKeyboard = useCallback((e) => {
     const key = e.key.toLowerCase()
 
@@ -277,7 +277,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
     }
 
     if (mode === 'exam' && !checked) {
-      // 👇 禁止物理键盘空格
+      // 禁止物理键盘空格
       if (key === ' ') {
         e.preventDefault()
         return
@@ -351,7 +351,7 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
           nextReviewDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
           repetitionLevel: 0
         }
-        setMistakeBook([mistakeBook, newMistake])
+        setMistakeBook([...mistakeBook, newMistake])
       }
     }
   }, [updateProgress, progress, mode, mistakeBook, setMistakeBook, currentWord])
@@ -629,18 +629,20 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
               <div style={{
                 fontSize: '14px',
                 color: 'var(--gray)',
-                marginBottom: '10px'
+                marginBottom: '30px'
               }}>
                 请拼写这个单词
               </div>
 
+              {/* 👇 优化后的拼写区域：字母更大、间距更小、更协调 */}
               <div style={{
                 display: 'flex',
-                gap: '12px',
+                gap: '8px',
                 justifyContent: 'center',
                 marginBottom: '30px',
                 flexWrap: 'wrap',
-                padding: '10px'
+                padding: '10px',
+                alignItems: 'flex-end'
               }}>
                 {currentWord.word.split('').map((char, index) => {
                   if (char === ' ') {
@@ -648,8 +650,8 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
                       <div
                         key={index}
                         style={{
-                          width: '24px',
-                          height: '60px',
+                          width: '16px',
+                          height: '64px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center'
@@ -671,20 +673,20 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
                     <div
                       key={index}
                       style={{
-                        width: '52px',
-                        height: '60px',
-                        borderBottom: '4px solid #d1d5db',
+                        width: '48px',
+                        height: '64px',
+                        borderBottom: '3px solid #d1d5db',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '28px',
+                        fontSize: '36px',
                         fontWeight: '700',
                         color: userInput[inputIndex]
                           ? showResult === 'correct'
                             ? '#10b981'
                             : showResult === 'wrong'
                               ? '#ef4444'
-                              : 'var(--dark)'
+                              : '#1f2937'
                           : '#9ca3af'
                       }}
                     >
@@ -944,7 +946,6 @@ function Study({ wordLibrary, learnedWords, setLearnedWords, updateProgress, pro
             >
               ← Back
             </button>
-            {/* 👇 空格按钮还在，但点击已经无效 */}
             <button
               style={{
                 width: '300px',
