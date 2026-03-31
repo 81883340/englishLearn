@@ -763,19 +763,19 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage, currentBook,
           >
             + 新建词本
           </button>
-          <button
-            className="btn btn-primary"
-            onClick={() => {
-              const targetBook = localBook === '全部词本' ? '全部词本' : localBook
-              if (confirm(`确定要将 "${targetBook}" 设置为当前学习词本吗？\n${targetBook === '全部词本' ? '将学习所有词本的单词' : ''}`)) {
-                setCurrentBook(targetBook)
-                alert(`已将 "${targetBook}" 设置为当前学习词本`)
-              }
-            }}
-            style={{ padding: '8px 16px', fontSize: '14px' }}
-          >
-            ⭐ 设为当前学习
-          </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  const targetBook = localBook === '全部词本' ? '全部词本' : localBook.trim()
+                  if (confirm(`确定要将 "${targetBook}" 设置为当前学习词本吗？\n${targetBook === '全部词本' ? '将学习所有词本的单词' : ''}`)) {
+                    setCurrentBook(targetBook)
+                    alert(`已将 "${targetBook}" 设置为当前学习词本`)
+                  }
+                }}
+                style={{ padding: '8px 16px', fontSize: '14px' }}
+              >
+                ⭐ 设为当前学习
+              </button>
           {localBook !== '全部词本' && localBook !== '默认词本' && (
             <button
               className="btn btn-danger"
@@ -1463,14 +1463,14 @@ function WordLibrary({ wordLibrary, setWordLibrary, setCurrentPage, currentBook,
                             style={{ padding: '8px 16px', fontSize: '14px', fontWeight: '500' }}
                             onClick={() => startEditing(word)}
                           >
-                            编辑
+                            ✏ 编辑
                           </button>
                           <button
                             className="btn btn-danger"
                             style={{ padding: '8px 16px', fontSize: '14px', fontWeight: '500' }}
                             onClick={() => handleDeleteWord(word.id)}
                           >
-                            删除
+                            🗑 删除
                           </button>
                         </div>
                       </td>

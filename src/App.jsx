@@ -41,7 +41,7 @@ const safeLoadString = (key, defaultValue) => {
 function App() {
   const [currentPage, setCurrentPage] = useState('home')
   const [currentBook, setCurrentBook] = useState(() =>
-    safeLoadString('currentBook', '全部词本')
+    cleanBookName(safeLoadString('currentBook', '全部词本'))
   )
   const [points, setPoints] = useState(() =>
     safeLoadFromStorage('points', 0)
@@ -251,6 +251,11 @@ function App() {
     return units
   }
 
+  // 清理词本名称的前后空格
+  const cleanBookName = (bookName) => {
+    return bookName ? bookName.trim() : bookName
+  }
+
   // 设置每日目标时自动分割词库
   const handleSetDailyGoal = (goal) => {
     setDailyGoal(goal)
@@ -258,13 +263,13 @@ function App() {
 
     // 重新分割所有词本
     const newLibraryUnits = {}
-    const allBooks = ['全部词本', ...new Set(wordLibrary.map(w => w.bookName))]
+    const allBooks = ['全部词本', ...new Set(wordLibrary.map(w => cleanBookName(w.bookName)))]
 
     allBooks.forEach(bookName => {
       if (bookName === '全部词本') {
         newLibraryUnits[bookName] = splitLibraryIntoUnits(bookName, wordLibrary, goal)
       } else {
-        const bookWords = wordLibrary.filter(w => w.bookName === bookName)
+        const bookWords = wordLibrary.filter(w => cleanBookName(w.bookName) === bookName)
         newLibraryUnits[bookName] = splitLibraryIntoUnits(bookName, bookWords, goal)
       }
     })
@@ -273,15 +278,35 @@ function App() {
     setCurrentUnitIndex(0)
   }
 
-  // 获取当前词库单元
+  // 获取当前词库单元（处理空格问题）
   const getCurrentUnitWords = (bookName) => {
-    const units = libraryUnits[bookName] || []
+    const cleanName = cleanBookName(bookName)
+    
+    // 尝试多种可能的键名匹配
+    const possibleKeys = [
+      bookName,           // 原始名称（可能带空格）
+      cleanName,         // 清理后的名称
+      ` ${cleanName}`,    // 前面加一个空格（匹配调试信息）
+      `${cleanName} `,    // 后面加一个空格
+      ` ${cleanName} `    // 前后都加空格
+    ]
+    
+    let units = []
+    for (const key of possibleKeys) {
+      if (libraryUnits[key]) {
+        units = libraryUnits[key]
+        console.log(`Found units for key: "${key}" (original: "${bookName}")`)
+        break
+      }
+    }
+    
     const currentIndex = currentUnitIndex
 
     if (currentIndex < units.length) {
       return units[currentIndex]
     }
 
+    console.log(`No units found for book: "${bookName}", cleaned: "${cleanName}", currentIndex: ${currentIndex}`)
     return []
   }
 
