@@ -202,6 +202,11 @@ function App() {
     }
   }, [checkInHistory])
 
+  // 清理词本名称的前后空格
+  const cleanBookName = (bookName) => {
+    return bookName ? bookName.trim() : bookName
+  }
+
   // 检查今日是否已打卡
   const getTodayDate = () => new Date().toISOString().split('T')[0]
 
@@ -249,11 +254,6 @@ function App() {
       units.push(words.slice(i, i + unitSize))
     }
     return units
-  }
-
-  // 清理词本名称的前后空格
-  const cleanBookName = (bookName) => {
-    return bookName ? bookName.trim() : bookName
   }
 
   // 设置每日目标时自动分割词库
