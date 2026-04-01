@@ -749,7 +749,7 @@ function SpacedRepetition({
             type="text"
             value={userInput}
             onChange={handleInputChange}
-            onKeyPress={handleKeyPress}
+            onKeyPress={handleEnterKeyPress}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             placeholder="输入单词..."
