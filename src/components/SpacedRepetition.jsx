@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import toast from 'react-hot-toast'
 
 // 遗忘曲线时间间隔（天）
@@ -19,6 +19,10 @@ function SpacedRepetition({
   const [reviewQueue, setReviewQueue] = useState([])
   const [reviewIndex, setReviewIndex] = useState(0)
   const [showWord, setShowWord] = useState(false)
+  const [streak, setStreak] = useState(0)
+  const [reviewStats, setReviewStats] = useState({ correct: 0, wrong: 0 })
+  const [isFocused, setIsFocused] = useState(false)
+  const inputRef = useRef(null)
 
   // 获取今天需要复习的单词
   const getTodayReviewWords = useCallback(() => {
@@ -42,6 +46,13 @@ function SpacedRepetition({
       setCurrentWord(todayWords[0])
     }
   }, [mistakeBook])
+
+  // 自动聚焦到输入框
+  useEffect(() => {
+    if (inputRef.current && !hasCheckedAnswer && currentWord && !showWord) {
+      inputRef.current.focus()
+    }
+  }, [hasCheckedAnswer, currentWord, showWord])
 
   // 更新复习进度
   const updateReviewProgress = (wordId, correct) => {
@@ -88,23 +99,52 @@ function SpacedRepetition({
   }
 
   // 提交答案
-  const submitAnswer = () => {
+  const submitAnswer = useCallback(() => {
     if (!currentWord || userInput.length === 0) return
 
     setHasCheckedAnswer(true)
     const correct = userInput.toLowerCase() === currentWord.word.toLowerCase()
 
+    // 更新统计信息
     if (correct) {
       setShowResult('correct')
+      setStreak(prev => prev + 1)
+      setReviewStats(prev => ({ ...prev, correct: prev.correct + 1 }))
       updateReviewProgress(currentWord.id, true)
     } else {
       setShowResult('wrong')
+      setStreak(0)
+      setReviewStats(prev => ({ ...prev, wrong: prev.wrong + 1 }))
       updateReviewProgress(currentWord.id, false)
+    }
+  }, [currentWord, userInput])
+
+  // 处理输入变化
+  const handleInputChange = (e) => {
+    if (hasCheckedAnswer) return
+    setUserInput(e.target.value)
+  }
+
+  // 处理键盘提交
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !hasCheckedAnswer) {
+      submitAnswer()
+    }
+  }
+
+  // 重新拼写
+  const retryWord = () => {
+    setUserInput('')
+    setShowResult(null)
+    setShowHint(false)
+    setHasCheckedAnswer(false)
+    if (inputRef.current) {
+      inputRef.current.focus()
     }
   }
 
   // 下一个单词
-  const nextWord = () => {
+  const nextWord = useCallback(() => {
     setUserInput('')
     setShowResult(null)
     setShowHint(false)
@@ -120,7 +160,7 @@ function SpacedRepetition({
       setCurrentWord(null)
       toast.success('今日复习完成！🎉')
     }
-  }
+  }, [reviewIndex, reviewQueue])
 
   // 跳过当前单词
   const skipWord = () => {
@@ -150,23 +190,7 @@ function SpacedRepetition({
     }
   }
 
-  const keyboardRows = [
-    ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
-    ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
-    ['z', 'x', 'c', 'v', 'b', 'n', 'm']
-  ]
-
-  const handleKeyPress = (key) => {
-    if (hasCheckedAnswer) return
-
-    if (key === 'BACK') {
-      setUserInput(prev => prev.slice(0, -1))
-    } else if (key === 'SPACE') {
-      setUserInput(prev => prev + ' ')
-    } else if (key.length === 1) {
-      setUserInput(prev => prev + key)
-    }
-  }
+  
 
   // 物理键盘处理
   useEffect(() => {
@@ -182,21 +206,21 @@ function SpacedRepetition({
       }
 
       if (key === 'backspace') {
-        handleKeyPress('BACK')
+        setUserInput(prev => prev.slice(0, -1))
       } else if (key === ' ') {
         e.preventDefault()
-        handleKeyPress('SPACE')
+        setUserInput(prev => prev + ' ')
       } else if (key === 'enter') {
         e.preventDefault()
         submitAnswer()
       } else if (key.length === 1 && /[a-z]/.test(key)) {
-        handleKeyPress(key)
+        setUserInput(prev => prev + key)
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [hasCheckedAnswer, userInput])
+  }, [hasCheckedAnswer, userInput, submitAnswer, nextWord])
 
   const getProgressPercent = () => {
     if (reviewQueue.length === 0) return 0
@@ -307,6 +331,41 @@ function SpacedRepetition({
         </div>
       </nav>
 
+      {/* 统计信息 */}
+      <div style={{
+        display: 'flex',
+        gap: '6px',
+        justifyContent: 'center',
+        flexWrap: 'wrap',
+        marginBottom: '8px',
+        flexShrink: 0
+      }}>
+        <span style={{
+          display: 'inline-block',
+          padding: '4px 10px',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          borderRadius: '12px',
+          fontSize: '12px',
+          fontWeight: '600'
+        }}>
+          连续正确: {streak}
+        </span>
+        <span style={{
+          display: 'inline-block',
+          padding: '4px 10px',
+          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+          color: 'white',
+          borderRadius: '12px',
+          fontSize: '12px',
+          fontWeight: '600'
+        }}>
+          正确率: {reviewStats.correct + reviewStats.wrong > 0
+            ? Math.round((reviewStats.correct / (reviewStats.correct + reviewStats.wrong)) * 100)
+            : 0}%
+        </span>
+      </div>
+
       <div className="card" style={{
         maxWidth: '800px',
         margin: '0 auto',
@@ -379,305 +438,402 @@ function SpacedRepetition({
           </span>
         </div>
 
-        {/* 单词展示区域 */}
-        <div style={{ marginBottom: '40px' }}>
-          <div style={{ marginBottom: '24px' }}>
-            {showWord || hasCheckedAnswer ? (
-              <>
-                <h1 style={{
-                  fontSize: '56px',
-                  fontWeight: '800',
-                  color: 'var(--dark)',
-                  marginBottom: '12px',
-                  lineHeight: '1.2'
-                }}>
-                  {currentWord.word}
-                </h1>
-                {currentWord.phonetic && (
-                  <p style={{
-                    fontSize: '20px',
-                    color: 'var(--gray)',
-                    fontFamily: 'Arial, sans-serif',
-                    fontWeight: '400',
-                    marginBottom: '16px'
-                  }}>
-                    📢 {currentWord.phonetic}
-                  </p>
-                )}
-              </>
-            ) : (
-              <>
-                <h1 style={{
-                  fontSize: '24px',
-                  color: 'var(--primary)',
-                  fontWeight: '600',
-                  marginBottom: '16px'
-                }}>
-                  {currentWord.meaning}
-                </h1>
-                {currentWord.phonetic && (
-                  <p style={{
-                    fontSize: '18px',
-                    color: 'var(--gray)',
-                    fontFamily: 'Arial, sans-serif',
-                    marginBottom: '20px'
-                  }}>
-                    📢 {currentWord.phonetic}
-                  </p>
-                )}
-                <p style={{ fontSize: '14px', color: 'var(--gray)', marginBottom: '20px' }}>
-                  请拼写这个单词
-                </p>
-
-                {/* 占位符 */}
-                <div style={{
-                  display: 'flex',
-                  gap: '8px',
-                  justifyContent: 'center',
-                  marginBottom: '20px'
-                }}>
-                  {Array(currentWord.word.length).fill(0).map((_, index) => (
-                    <div
-                      key={index}
-                      style={{
-                        width: '40px',
-                        height: '50px',
-                        borderBottom: '3px solid var(--gray)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '24px',
-                        fontWeight: '700',
-                        color: userInput[index]
-                          ? showResult === 'correct'
-                            ? '#10b981'
-                            : showResult === 'wrong'
-                              ? '#ef4444'
-                              : 'var(--dark)'
-                          : 'var(--gray)'
-                      }}
-                    >
-                      {userInput[index] || ''}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+        {/* 提示信息 */}
+        {showHint && !hasCheckedAnswer && (
+          <div style={{
+            padding: '6px 10px',
+            background: 'rgba(99, 102, 241, 0.1)',
+            borderRadius: '6px',
+            marginBottom: '8px'
+          }}>
+            <p style={{ color: 'var(--primary)', fontWeight: '500', marginBottom: '2px', fontSize: '11px' }}>
+              单词长度: {currentWord.word.length} 个字母
+            </p>
+            <p style={{ color: 'var(--gray)', fontSize: '10px', fontStyle: 'italic' }}>
+              例句: "{currentWord.example}"
+            </p>
           </div>
+        )}
 
-          {(showWord || hasCheckedAnswer) && (
+        {/* 单词释义 */}
+        <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+          {showWord ? (
             <>
-              <p style={{
+              <div style={{
                 fontSize: '24px',
+                color: 'var(--dark)',
+                fontWeight: '800',
+                marginBottom: '3px',
+                lineHeight: '1.3'
+              }}>
+                {currentWord.word}
+              </div>
+              {currentWord.phonetic && (
+                <div style={{
+                  fontSize: '11px',
+                  color: 'var(--gray)',
+                  fontFamily: 'Arial, sans-serif',
+                  marginBottom: '2px'
+                }}>
+                  📢 {currentWord.phonetic}
+                </div>
+              )}
+              <div style={{
+                fontSize: '10px',
+                color: 'var(--primary)',
+                marginBottom: '6px',
+                fontWeight: '600'
+              }}>
+                释义: {currentWord.meaning}
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{
+                fontSize: '15px',
                 color: 'var(--primary)',
                 fontWeight: '600',
-                marginBottom: '16px'
+                marginBottom: '3px',
+                lineHeight: '1.3'
               }}>
                 {currentWord.meaning}
-              </p>
-              <p style={{
-                fontSize: '18px',
+              </div>
+              {currentWord.phonetic && (
+                <div style={{
+                  fontSize: '11px',
+                  color: 'var(--gray)',
+                  fontFamily: 'Arial, sans-serif',
+                  marginBottom: '2px'
+                }}>
+                  📢 {currentWord.phonetic}
+                </div>
+              )}
+              <div style={{
+                fontSize: '10px',
                 color: 'var(--gray)',
-                fontStyle: 'italic'
+                marginBottom: '6px'
               }}>
-                "{currentWord.example}"
-              </p>
+                请拼写这个单词
+              </div>
             </>
           )}
         </div>
 
-        {showResult === 'wrong' && !hasCheckedAnswer && (
+        {/* 输入框 */}
+        <div style={{
+          position: 'relative',
+          marginBottom: '8px'
+        }}>
+          {/* 显示占位符 */}
           <div style={{
-            padding: '20px',
-            background: 'rgba(239, 68, 68, 0.1)',
-            borderRadius: '12px',
-            marginBottom: '20px'
+            display: 'flex',
+            gap: '2px',
+            justifyContent: 'center',
+            marginBottom: '6px'
+          }}>
+            {currentWord.word.split('').map((char, index) => {
+              // 如果是空格，显示空占位符（没有下划线）
+              if (char === ' ') {
+                return (
+                  <div
+                    key={index}
+                    style={{
+                      width: '10px',
+                      height: '28px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  />
+                )
+              }
+
+              // 计算实际的用户输入索引（跳过空格）
+              let inputIndex = 0
+              let charCount = 0
+              for (let i = 0; i < index; i++) {
+                if (currentWord.word[i] !== ' ') {
+                  charCount++
+                }
+              }
+              inputIndex = charCount
+
+              return (
+                <div
+                  key={index}
+                  style={{
+                    width: '22px',
+                    height: '28px',
+                    borderBottom: `2px solid ${
+                      userInput[inputIndex]
+                        ? showResult === 'correct'
+                          ? '#10b981'
+                          : showResult === 'wrong'
+                            ? userInput[inputIndex].toLowerCase() === currentWord.word[index].toLowerCase()
+                              ? '#10b981'
+                              : '#ef4444'
+                            : 'var(--primary)'
+                        : '#e5e7eb'
+                    }`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    color: userInput[inputIndex]
+                      ? showResult === 'correct'
+                        ? '#10b981'
+                        : showResult === 'wrong'
+                          ? userInput[inputIndex].toLowerCase() === currentWord.word[index].toLowerCase()
+                            ? '#10b981'
+                            : '#ef4444'
+                          : 'var(--dark)'
+                      : 'var(--gray)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {userInput[inputIndex] || ''}
+                </div>
+              )
+            })}
+          </div>
+
+          <input
+            ref={inputRef}
+            type="text"
+            value={userInput}
+            onChange={handleInputChange}
+            onKeyPress={handleKeyPress}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            placeholder="输入单词..."
+            autoComplete="off"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+            disabled={hasCheckedAnswer}
+            style={{
+              width: '100%',
+              padding: '6px 10px',
+              fontSize: '16px',
+              fontWeight: '600',
+              border: `2px solid ${
+                showResult === 'correct' ? '#10b981' :
+                showResult === 'wrong' ? '#ef4444' :
+                isFocused ? 'var(--primary)' : '#e5e7eb'
+              }`,
+              borderRadius: '6px',
+              outline: 'none',
+              textAlign: 'center',
+              transition: 'all 0.3s ease',
+              background: hasCheckedAnswer ? '#f9fafb' : 'white',
+              color: showResult === 'correct' ? '#10b981' :
+                     showResult === 'wrong' ? '#ef4444' :
+                     'var(--dark)',
+              letterSpacing: '2px',
+              textTransform: 'lowercase'
+            }}
+          />
+        </div>
+
+        {/* 结果反馈 */}
+        {showResult === 'correct' && (
+          <div style={{
+            padding: '6px 10px',
+            background: 'rgba(16, 185, 129, 0.1)',
+            borderRadius: '6px',
+            marginBottom: '8px',
+            animation: 'fade-in 0.3s ease'
           }}>
             <p style={{
-              fontSize: '20px',
+              fontSize: '13px',
+              color: '#10b981',
+              fontWeight: '600',
+              marginBottom: '2px',
+              textAlign: 'center'
+            }}>
+              ✓ 回答正确！
+            </p>
+            <p style={{
+              fontSize: '10px',
+              color: 'var(--gray)',
+              textAlign: 'center'
+            }}>
+              自动进入下一题...
+            </p>
+          </div>
+        )}
+
+        {showResult === 'wrong' && (
+          <div style={{
+            padding: '6px 10px',
+            background: 'rgba(239, 68, 68, 0.1)',
+            borderRadius: '6px',
+            marginBottom: '8px',
+            animation: 'fade-in 0.3s ease'
+          }}>
+            <p style={{
+              fontSize: '13px',
               color: 'var(--danger)',
               fontWeight: '600',
-              marginBottom: '10px'
+              marginBottom: '3px',
+              textAlign: 'center'
             }}>
               正确答案是: {currentWord.word}
             </p>
             {currentWord.phonetic && (
               <p style={{
-                fontSize: '16px',
+                fontSize: '10px',
                 color: 'var(--gray)',
-                fontWeight: '500'
+                textAlign: 'center',
+                marginBottom: '2px'
               }}>
                 音标: {currentWord.phonetic}
               </p>
             )}
+            <p style={{
+              fontSize: '9px',
+              color: 'var(--gray)',
+              fontStyle: 'italic',
+              textAlign: 'center'
+            }}>
+              "{currentWord.example}"
+            </p>
           </div>
         )}
 
-        {/* 操作按钮 */}
+        {/* 操作按钮区域 */}
         <div style={{
           display: 'flex',
-          gap: '12px',
+          gap: '8px',
           justifyContent: 'center',
-          marginBottom: '40px',
-          flexWrap: 'wrap'
+          marginTop: 'auto'
         }}>
-          {!hasCheckedAnswer && !showWord && (
-            <button
-              className="btn btn-secondary"
-              onClick={() => setShowHint(!showHint)}
-            >
-              💡 {showHint ? '隐藏提示' : '显示提示'}
-            </button>
-          )}
-
-          {!showWord && (
-            <button
-              className="btn btn-secondary"
-              onClick={() => setShowWord(!showWord)}
-            >
-              👁️ {showWord ? '隐藏单词' : '查看单词'}
-            </button>
-          )}
-
           {!hasCheckedAnswer && (
-            <button
-              className="btn btn-danger"
-              onClick={skipWord}
-            >
-              跳过 →
-            </button>
+            <>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowHint(!showHint)}
+                style={{
+                  flex: 1,
+                  padding: '7px 10px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}
+              >
+                💡 {showHint ? '隐藏提示' : '显示提示'}
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={submitAnswer}
+                disabled={userInput.length === 0}
+                style={{
+                  flex: 2,
+                  padding: '7px 10px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  opacity: userInput.length === 0 ? 0.5 : 1
+                }}
+              >
+                检查答案
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowWord(!showWord)}
+                style={{
+                  flex: 1,
+                  padding: '7px 10px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}
+              >
+                👁️ {showWord ? '隐藏单词' : '查看单词'}
+              </button>
+            </>
           )}
-
-          {!hasCheckedAnswer && !showWord && (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={submitAnswer}
-              disabled={userInput.length === 0}
-            >
-              检查答案 (Enter)
-            </button>
+          {hasCheckedAnswer && showResult === 'wrong' && (
+            <>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowHint(!showHint)}
+                style={{
+                  flex: 1,
+                  padding: '7px 10px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}
+              >
+                💡 {showHint ? '隐藏提示' : '显示提示'}
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={retryWord}
+                style={{
+                  flex: 1,
+                  padding: '7px 10px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}
+              >
+                重新拼写
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={skipWord}
+                style={{
+                  flex: 1,
+                  padding: '7px 10px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}
+              >
+                跳过
+              </button>
+            </>
           )}
-
-          {hasCheckedAnswer && (
-            <button className="btn btn-primary" onClick={nextWord}>
-              下一个单词 (Space)
-            </button>
-          )}
-
-          {hasCheckedAnswer && (
-            <button className="btn btn-success" onClick={markAsMastered}>
-              ✓ 已掌握
-            </button>
+          {hasCheckedAnswer && showResult === 'correct' && (
+            <>
+              <button
+                className="btn btn-secondary"
+                onClick={nextWord}
+                style={{
+                  flex: 1,
+                  padding: '7px 10px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}
+              >
+                下一个单词
+              </button>
+              <button
+                className="btn btn-success"
+                onClick={markAsMastered}
+                style={{
+                  flex: 1,
+                  padding: '7px 10px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}
+              >
+                ✓ 已掌握
+              </button>
+            </>
           )}
         </div>
-
-        {showHint && !hasCheckedAnswer && (
-          <div style={{
-            padding: '16px 24px',
-            background: 'rgba(99, 102, 241, 0.1)',
-            borderRadius: '12px',
-            marginBottom: '20px'
-          }}>
-            <p style={{ color: 'var(--primary)', fontWeight: '500', marginBottom: '8px' }}>
-              单词长度: {currentWord.word.length} 个字母
-            </p>
-            <p style={{ color: 'var(--gray)', fontSize: '14px', fontStyle: 'italic' }}>
-              例句: "{currentWord.example}"
-            </p>
-          </div>
-        )}
       </div>
 
-      {/* 虚拟键盘 */}
-      <div className="card" style={{
-        maxWidth: '700px',
-        margin: '0 auto',
-        padding: '30px'
-      }}>
-        <h3 style={{
-          textAlign: 'center',
-          marginBottom: '20px',
-          color: 'var(--dark)',
-          fontSize: '18px',
-          fontWeight: '600'
-        }}>
-          虚拟键盘
-        </h3>
-
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '10px',
-          alignItems: 'center'
-        }}>
-          {keyboardRows.map((row, rowIndex) => (
-            <div key={rowIndex} style={{ display: 'flex', gap: '6px' }}>
-              {row.map((key) => (
-                <button
-                  key={key}
-                  onClick={() => handleKeyPress(key)}
-                  style={{
-                    width: '48px',
-                    height: '56px',
-                    border: 'none',
-                    borderRadius: '10px',
-                    fontSize: '20px',
-                    fontWeight: '600',
-                    background: '#e5e7eb',
-                    color: 'var(--dark)',
-                    cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s ease',
-                    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
-                  }}
-                  disabled={hasCheckedAnswer}
-                >
-                  {key.toUpperCase()}
-                </button>
-              ))}
-            </div>
-          ))}
-
-          <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
-            <button
-              onClick={() => handleKeyPress('BACK')}
-              style={{
-                width: '100px',
-                height: '56px',
-                border: 'none',
-                borderRadius: '10px',
-                fontSize: '16px',
-                fontWeight: '600',
-                background: '#e5e7eb',
-                color: 'var(--dark)',
-                cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
-                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
-              }}
-              disabled={hasCheckedAnswer}
-            >
-              ← Back
-            </button>
-            <button
-              onClick={() => handleKeyPress('SPACE')}
-              style={{
-                width: '300px',
-                height: '56px',
-                border: 'none',
-                borderRadius: '10px',
-                fontSize: '16px',
-                fontWeight: '600',
-                background: '#e5e7eb',
-                color: 'var(--dark)',
-                cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
-                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
-              }}
-              disabled={hasCheckedAnswer}
-            >
-              Space
-            </button>
-          </div>
-        </div>
-      </div>
+      <style>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   )
 }
