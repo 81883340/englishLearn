@@ -22,6 +22,7 @@ function SpacedRepetition({
   const [streak, setStreak] = useState(0)
   const [reviewStats, setReviewStats] = useState({ correct: 0, wrong: 0 })
   const [isFocused, setIsFocused] = useState(false)
+  const [pressedKey, setPressedKey] = useState(null)
   const inputRef = useRef(null)
 
   // 获取今天需要复习的单词
@@ -125,8 +126,46 @@ function SpacedRepetition({
     setUserInput(e.target.value)
   }
 
-  // 处理键盘提交
-  const handleKeyPress = (e) => {
+  // 虚拟键盘行
+  const keyboardRows = [
+    ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+    ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+    ['z', 'x', 'c', 'v', 'b', 'n', 'm']
+  ]
+
+  // 虚拟键盘按键处理
+  const handleVirtualKeyPress = (key) => {
+    if (hasCheckedAnswer) return
+
+    // 禁止空格输入（与Study考试模式一致）
+    if (key === 'SPACE') return
+
+    if (key === 'BACK') {
+      setUserInput(prev => prev.slice(0, -1))
+    } else if (key.length === 1) {
+      setUserInput(prev => prev + key)
+    }
+  }
+
+  // 获取按键颜色（与Study考试模式一致）
+  const getKeyColor = (key) => {
+    const lowerKey = key.toLowerCase()
+    if (showResult === 'correct') return '#10b981'
+    if (showResult === 'wrong') return '#ef4444'
+
+    if (pressedKey === lowerKey) return 'var(--primary)'
+
+    // 学习模式下的键盘提示（显示下一个预期字母）
+    const targetIndex = userInput.length
+    if (targetIndex < currentWord?.word.length) {
+      return currentWord.word[targetIndex].toLowerCase() === lowerKey ? 'var(--primary)' : '#e5e7eb'
+    }
+
+    return '#e5e7eb'
+  }
+
+  // 处理回车键提交
+  const handleEnterKeyPress = (e) => {
     if (e.key === 'Enter' && !hasCheckedAnswer) {
       submitAnswer()
     }
@@ -192,24 +231,38 @@ function SpacedRepetition({
 
   
 
-  // 物理键盘处理
+  // 物理键盘处理（与Study考试模式一致）
   useEffect(() => {
     const handleKeyDown = (e) => {
       const key = e.key.toLowerCase()
 
+      // 设置按下的键用于视觉反馈
+      setPressedKey(key)
+      setTimeout(() => setPressedKey(null), 150)
+
       if (hasCheckedAnswer) {
+        // 检查答案后，空格键用于下一步操作
         if (key === ' ') {
           e.preventDefault()
-          nextWord()
+          if (showResult === 'correct') {
+            nextWord()
+          } else if (showResult === 'wrong') {
+            retryWord()
+          }
         }
         return
       }
 
-      if (key === 'backspace') {
-        setUserInput(prev => prev.slice(0, -1))
-      } else if (key === ' ') {
+      // 禁止物理键盘空格
+      if (key === ' ') {
         e.preventDefault()
-        setUserInput(prev => prev + ' ')
+        return
+      }
+
+      // 处理其他按键
+      if (key === 'backspace') {
+        e.preventDefault()
+        setUserInput(prev => prev.slice(0, -1))
       } else if (key === 'enter') {
         e.preventDefault()
         submitAnswer()
@@ -220,7 +273,7 @@ function SpacedRepetition({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [hasCheckedAnswer, userInput, submitAnswer, nextWord])
+  }, [hasCheckedAnswer, showResult, submitAnswer, nextWord, retryWord])
 
   const getProgressPercent = () => {
     if (reviewQueue.length === 0) return 0
@@ -312,6 +365,99 @@ function SpacedRepetition({
             <button className="btn btn-primary" onClick={() => setCurrentPage('mistake')}>
               查看错词本
             </button>
+          </div>
+        </div>
+
+        {/* 虚拟键盘 */}
+        <div className="card" style={{
+          maxWidth: '700px',
+          margin: '20px auto 0',
+          padding: '20px'
+        }}>
+          <h3 style={{
+            textAlign: 'center',
+            marginBottom: '15px',
+            color: 'var(--dark)',
+            fontSize: '16px',
+            fontWeight: '600'
+          }}>
+            虚拟键盘
+          </h3>
+
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            alignItems: 'center'
+          }}>
+            {keyboardRows.map((row, rowIndex) => (
+              <div key={rowIndex} style={{ display: 'flex', gap: '4px' }}>
+                {row.map((key) => (
+                  <button
+                    key={key}
+                    onClick={() => handleVirtualKeyPress(key)}
+                    style={{
+                      width: '40px',
+                      height: '48px',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '18px',
+                      fontWeight: '600',
+                      background: getKeyColor(key),
+                      color: getKeyColor(key) === '#e5e7eb' ? 'var(--dark)' : 'white',
+                      cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 3px 8px rgba(0, 0, 0, 0.1)'
+                    }}
+                    disabled={hasCheckedAnswer}
+                    onMouseDown={(e) => e.target.style.transform = 'scale(0.95)'}
+                    onMouseUp={(e) => e.target.style.transform = 'scale(1)'}
+                    onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                  >
+                    {key.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            ))}
+
+            <div style={{ display: 'flex', gap: '4px', marginTop: '6px' }}>
+              <button
+                onClick={() => handleVirtualKeyPress('BACK')}
+                style={{
+                  width: '90px',
+                  height: '48px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  background: '#e5e7eb',
+                  color: 'var(--dark)',
+                  cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 3px 8px rgba(0, 0, 0, 0.1)'
+                }}
+                disabled={hasCheckedAnswer}
+              >
+                ← Back
+              </button>
+              <button
+                style={{
+                  width: '250px',
+                  height: '48px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  background: '#e5e7eb',
+                  color: 'var(--dark)',
+                  cursor: 'default',
+                  opacity: 0.6
+                }}
+                disabled
+              >
+                Space 已禁用
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -819,6 +965,99 @@ function SpacedRepetition({
               </button>
             </>
           )}
+        </div>
+
+        {/* 虚拟键盘 */}
+        <div className="card" style={{
+          maxWidth: '700px',
+          margin: '20px auto 0',
+          padding: '20px'
+        }}>
+          <h3 style={{
+            textAlign: 'center',
+            marginBottom: '15px',
+            color: 'var(--dark)',
+            fontSize: '16px',
+            fontWeight: '600'
+          }}>
+            虚拟键盘
+          </h3>
+
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            alignItems: 'center'
+          }}>
+            {keyboardRows.map((row, rowIndex) => (
+              <div key={rowIndex} style={{ display: 'flex', gap: '4px' }}>
+                {row.map((key) => (
+                  <button
+                    key={key}
+                    onClick={() => handleVirtualKeyPress(key)}
+                    style={{
+                      width: '40px',
+                      height: '48px',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '18px',
+                      fontWeight: '600',
+                      background: getKeyColor(key),
+                      color: getKeyColor(key) === '#e5e7eb' ? 'var(--dark)' : 'white',
+                      cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 3px 8px rgba(0, 0, 0, 0.1)'
+                    }}
+                    disabled={hasCheckedAnswer}
+                    onMouseDown={(e) => e.target.style.transform = 'scale(0.95)'}
+                    onMouseUp={(e) => e.target.style.transform = 'scale(1)'}
+                    onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                  >
+                    {key.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            ))}
+
+            <div style={{ display: 'flex', gap: '4px', marginTop: '6px' }}>
+              <button
+                onClick={() => handleVirtualKeyPress('BACK')}
+                style={{
+                  width: '90px',
+                  height: '48px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  background: '#e5e7eb',
+                  color: 'var(--dark)',
+                  cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 3px 8px rgba(0, 0, 0, 0.1)'
+                }}
+                disabled={hasCheckedAnswer}
+              >
+                ← Back
+              </button>
+              <button
+                style={{
+                  width: '250px',
+                  height: '48px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  background: '#e5e7eb',
+                  color: 'var(--dark)',
+                  cursor: 'default',
+                  opacity: 0.6
+                }}
+                disabled
+              >
+                Space 已禁用
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
