@@ -12,18 +12,14 @@ function SpacedRepetition({
 }) {
   const [currentWord, setCurrentWord] = useState(null)
   const [userInput, setUserInput] = useState('')
-  const [showResult, setShowResult] = useState(null)
+  const [showResult, setShowResult] = useState(null) // 'correct' 或 'wrong'
   const [showHint, setShowHint] = useState(false)
   const [hasCheckedAnswer, setHasCheckedAnswer] = useState(false)
   const [todayReviewCount, setTodayReviewCount] = useState(0)
   const [reviewQueue, setReviewQueue] = useState([])
-  const [reviewIndex, setReviewIndex] = useState(0)
+  const [reviewIndex, setReviewIndex] = useState(0) // 已完成的单词数量
   const [showWord, setShowWord] = useState(false)
-  const [streak, setStreak] = useState(0)
-  const [reviewStats, setReviewStats] = useState({ correct: 0, wrong: 0 })
-  const [isFocused, setIsFocused] = useState(false)
-  const [pressedKey, setPressedKey] = useState(null)
-  const inputRef = useRef(null)
+  const isMounted = useRef(true)
 
   // 获取今天需要复习的单词
   const getTodayReviewWords = useCallback(() => {
@@ -37,247 +33,211 @@ function SpacedRepetition({
     })
   }, [mistakeBook])
 
-  // 初始化复习队列
+  // 初始化复习队列（仅在组件挂载时执行一次）
   useEffect(() => {
+    isMounted.current = true
     const todayWords = getTodayReviewWords()
     setReviewQueue(todayWords)
     setTodayReviewCount(todayWords.length)
 
     if (todayWords.length > 0) {
       setCurrentWord(todayWords[0])
+      setReviewIndex(0)
     }
-  }, [mistakeBook])
 
-  // 自动聚焦到输入框
-  useEffect(() => {
-    if (inputRef.current && !hasCheckedAnswer && currentWord && !showWord) {
-      inputRef.current.focus()
+    return () => {
+      isMounted.current = false
     }
-  }, [hasCheckedAnswer, currentWord, showWord])
+  }, []) // 空依赖，只执行一次
 
-  // 更新复习进度
-  const updateReviewProgress = (wordId, correct) => {
-    const item = mistakeBook.find(m => m.id === wordId)
-    if (!item) return
+  // 更新全局错词本（函数式更新确保最新状态）
+  const updateGlobalMistakeBook = useCallback((wordId, updateFn) => {
+    setMistakeBook(prevBook => {
+      const item = prevBook.find(m => m.id === wordId)
+      if (!item) return prevBook
+      return prevBook.map(m => m.id === wordId ? updateFn(m) : m)
+    })
+  }, [setMistakeBook])
 
-    if (correct) {
-      // 答对，更新到下一个复习间隔
-      const nextInterval = SPACED_REPETITION_INTERVALS[item.repetitionLevel] || 30
-      const nextReviewDate = new Date()
-      nextReviewDate.setDate(nextReviewDate.getDate() + nextInterval)
+  // 提交答案后的处理（正确/错误）
+  const processAnswer = useCallback((correct) => {
+    if (!currentWord) return
 
-      setMistakeBook(mistakeBook.map(m =>
-        m.id === wordId
-          ? {
-              ...m,
-              repetitionLevel: Math.min(item.repetitionLevel + 1, SPACED_REPETITION_INTERVALS.length - 1),
-              nextReviewDate: nextReviewDate.toISOString(),
-              lastReviewDate: new Date().toISOString()
-            }
-          : m
-      ))
+    // 更新全局错词本
+    updateGlobalMistakeBook(currentWord.id, (item) => {
+      if (correct) {
+        // 答对，更新到下一个复习间隔
+        const nextLevel = Math.min(item.repetitionLevel + 1, SPACED_REPETITION_INTERVALS.length - 1)
+        const nextInterval = SPACED_REPETITION_INTERVALS[nextLevel] || 30
+        const nextReviewDate = new Date()
+        nextReviewDate.setDate(nextReviewDate.getDate() + nextInterval)
 
-      toast.success(`下次复习: ${nextInterval}天后`)
-    } else {
-      // 答错，重置复习间隔
-      const nextReviewDate = new Date()
-      nextReviewDate.setDate(nextReviewDate.getDate() + 1)
+        toast.success(`下次复习: ${nextInterval}天后`)
+        return {
+          ...item,
+          repetitionLevel: nextLevel,
+          nextReviewDate: nextReviewDate.toISOString(),
+          lastReviewDate: new Date().toISOString()
+        }
+      } else {
+        // 答错，重置复习间隔
+        const nextReviewDate = new Date()
+        nextReviewDate.setDate(nextReviewDate.getDate() + 1)
 
-      setMistakeBook(mistakeBook.map(m =>
-        m.id === wordId
-          ? {
-              ...m,
-              wrongCount: item.wrongCount + 1,
-              repetitionLevel: 0,
-              nextReviewDate: nextReviewDate.toISOString(),
-              wrongDate: new Date().toISOString()
-            }
-          : m
-      ))
+        toast.error('已重置到第一天复习')
+        return {
+          ...item,
+          wrongCount: item.wrongCount + 1,
+          repetitionLevel: 0,
+          nextReviewDate: nextReviewDate.toISOString(),
+          wrongDate: new Date().toISOString()
+        }
+      }
+    })
 
-      toast.error('已重置到第一天复习')
-    }
-  }
+    // 从当前复习队列中移除该单词（无论对错，本次复习结束）
+    setReviewQueue(prevQueue => prevQueue.filter((_, idx) => idx !== reviewIndex))
+    // 更新已复习数量
+    setReviewIndex(prev => prev + 1)
+  }, [currentWord, reviewIndex, updateGlobalMistakeBook])
 
   // 提交答案
-  const submitAnswer = useCallback(() => {
-    if (!currentWord || userInput.length === 0) return
+  const submitAnswer = () => {
+    if (!currentWord || userInput.length === 0 || hasCheckedAnswer) return
 
     setHasCheckedAnswer(true)
     const correct = userInput.toLowerCase() === currentWord.word.toLowerCase()
-
-    // 更新统计信息
-    if (correct) {
-      setShowResult('correct')
-      setStreak(prev => prev + 1)
-      setReviewStats(prev => ({ ...prev, correct: prev.correct + 1 }))
-      updateReviewProgress(currentWord.id, true)
-    } else {
-      setShowResult('wrong')
-      setStreak(0)
-      setReviewStats(prev => ({ ...prev, wrong: prev.wrong + 1 }))
-      updateReviewProgress(currentWord.id, false)
-    }
-  }, [currentWord, userInput])
-
-  // 处理输入变化
-  const handleInputChange = (e) => {
-    if (hasCheckedAnswer) return
-    setUserInput(e.target.value)
+    setShowResult(correct ? 'correct' : 'wrong')
+    processAnswer(correct)
   }
 
-  // 虚拟键盘行
-  const keyboardRows = [
-    ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
-    ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
-    ['z', 'x', 'c', 'v', 'b', 'n', 'm']
-  ]
-
-  // 虚拟键盘按键处理
-  const handleVirtualKeyPress = (key) => {
-    if (hasCheckedAnswer) return
-
-    // 禁止空格输入（与Study考试模式一致）
-    if (key === 'SPACE') return
-
-    if (key === 'BACK') {
-      setUserInput(prev => prev.slice(0, -1))
-    } else if (key.length === 1) {
-      setUserInput(prev => prev + key)
-    }
-  }
-
-  // 获取按键颜色（与Study考试模式一致）
-  const getKeyColor = (key) => {
-    const lowerKey = key.toLowerCase()
-    if (showResult === 'correct') return '#10b981'
-    if (showResult === 'wrong') return '#ef4444'
-
-    if (pressedKey === lowerKey) return 'var(--primary)'
-
-    // 学习模式下的键盘提示（显示下一个预期字母）
-    const targetIndex = userInput.length
-    if (targetIndex < currentWord?.word.length) {
-      return currentWord.word[targetIndex].toLowerCase() === lowerKey ? 'var(--primary)' : '#e5e7eb'
-    }
-
-    return '#e5e7eb'
-  }
-
-  // 处理回车键提交
-  const handleEnterKeyPress = (e) => {
-    if (e.key === 'Enter' && !hasCheckedAnswer) {
-      submitAnswer()
-    }
-  }
-
-  // 重新拼写
-  const retryWord = () => {
-    setUserInput('')
-    setShowResult(null)
-    setShowHint(false)
-    setHasCheckedAnswer(false)
-    if (inputRef.current) {
-      inputRef.current.focus()
-    }
-  }
-
-  // 下一个单词
+  // 移动到下一个单词
   const nextWord = useCallback(() => {
+    // 重置输入和状态
     setUserInput('')
     setShowResult(null)
     setShowHint(false)
     setHasCheckedAnswer(false)
     setShowWord(false)
 
-    const newIndex = reviewIndex + 1
-    if (newIndex < reviewQueue.length) {
-      setReviewIndex(newIndex)
-      setCurrentWord(reviewQueue[newIndex])
-    } else {
-      // 复习完成
-      setCurrentWord(null)
-      toast.success('今日复习完成！🎉')
-    }
-  }, [reviewIndex, reviewQueue])
+    // 获取更新后的队列（依赖 reviewQueue 状态）
+    setReviewQueue(prevQueue => {
+      const newIndex = reviewIndex // 注意：此时 reviewIndex 已经 +1
+      if (newIndex < prevQueue.length) {
+        setCurrentWord(prevQueue[newIndex])
+        return prevQueue
+      } else {
+        // 复习完成
+        setCurrentWord(null)
+        return prevQueue
+      }
+    })
+  }, [reviewIndex])
 
-  // 跳过当前单词
+  // 当队列变化且当前单词为空但队列非空时，自动设置当前单词
+  useEffect(() => {
+    if (!currentWord && reviewQueue.length > 0 && reviewIndex < reviewQueue.length) {
+      setCurrentWord(reviewQueue[reviewIndex])
+    }
+  }, [currentWord, reviewQueue, reviewIndex])
+
+  // 跳过当前单词（移到队列末尾）
   const skipWord = () => {
+    if (!currentWord || hasCheckedAnswer) return
+
+    if (reviewQueue.length === 1) {
+      toast('只有一个待复习单词，无法跳过', { icon: '⚠️' })
+      return
+    }
+
+    setReviewQueue(prevQueue => {
+      const newQueue = [...prevQueue]
+      const skipped = newQueue.splice(reviewIndex, 1)[0]
+      newQueue.push(skipped)
+      // 保持当前索引不变，因为移除了一个元素，新队列中当前索引位置是下一个单词
+      setCurrentWord(newQueue[reviewIndex])
+      return newQueue
+    })
+    toast.info('已跳过，稍后复习')
+
+    // 重置输入状态
     setUserInput('')
     setShowResult(null)
     setShowHint(false)
     setHasCheckedAnswer(false)
-
-    // 将当前单词移到队列末尾
-    const skippedWord = currentWord
-    const newQueue = [...reviewQueue]
-    newQueue.splice(reviewIndex, 1)
-    newQueue.push(skippedWord)
-
-    setReviewQueue(newQueue)
-    setReviewIndex(0)
-    setCurrentWord(newQueue[0])
-    toast.info('已跳过，稍后复习')
+    setShowWord(false)
   }
 
   // 标记为已掌握
   const markAsMastered = () => {
-    if (confirm(`确定"${currentWord.word}"已掌握吗？将从错词本移除。`)) {
-      setMistakeBook(mistakeBook.filter(m => m.id !== currentWord.id))
-      nextWord()
+    if (!currentWord) return
+    if (window.confirm(`确定"${currentWord.word}"已掌握吗？将从错词本移除。`)) {
+      // 从全局错词本移除
+      setMistakeBook(prevBook => prevBook.filter(m => m.id !== currentWord.id))
+      // 从复习队列中移除
+      setReviewQueue(prevQueue => prevQueue.filter((_, idx) => idx !== reviewIndex))
+      setReviewIndex(prev => prev + 1)
       toast.success('单词已移除')
+      nextWord()
     }
   }
 
-  
+  // 虚拟键盘处理
+  const keyboardRows = [
+    ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+    ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+    ['z', 'x', 'c', 'v', 'b', 'n', 'm']
+  ]
 
-  // 物理键盘处理（与Study考试模式一致）
+  const handleKeyPress = (key) => {
+    if (hasCheckedAnswer) return
+
+    if (key === 'BACK') {
+      setUserInput(prev => prev.slice(0, -1))
+    } else if (key === 'SPACE') {
+      setUserInput(prev => prev + ' ')
+    } else if (key.length === 1) {
+      setUserInput(prev => prev + key)
+    }
+  }
+
+  // 物理键盘处理
   useEffect(() => {
     const handleKeyDown = (e) => {
       const key = e.key.toLowerCase()
 
-      // 设置按下的键用于视觉反馈
-      setPressedKey(key)
-      setTimeout(() => setPressedKey(null), 150)
-
       if (hasCheckedAnswer) {
-        // 检查答案后，空格键用于下一步操作
         if (key === ' ') {
           e.preventDefault()
-          if (showResult === 'correct') {
+          if (reviewQueue.length > 0 && reviewIndex < reviewQueue.length) {
             nextWord()
-          } else if (showResult === 'wrong') {
-            retryWord()
           }
         }
         return
       }
 
-      // 禁止物理键盘空格
-      if (key === ' ') {
-        e.preventDefault()
-        return
-      }
-
-      // 处理其他按键
       if (key === 'backspace') {
         e.preventDefault()
-        setUserInput(prev => prev.slice(0, -1))
+        handleKeyPress('BACK')
+      } else if (key === ' ') {
+        e.preventDefault()
+        handleKeyPress('SPACE')
       } else if (key === 'enter') {
         e.preventDefault()
         submitAnswer()
       } else if (key.length === 1 && /[a-z]/.test(key)) {
-        setUserInput(prev => prev + key)
+        handleKeyPress(key)
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [hasCheckedAnswer, showResult, submitAnswer, nextWord, retryWord])
+  }, [hasCheckedAnswer, userInput, reviewQueue, reviewIndex, nextWord, submitAnswer])
 
+  // 进度百分比（已完成的单词数 / 总单词数）
   const getProgressPercent = () => {
     if (reviewQueue.length === 0) return 0
-    return Math.round(((reviewIndex) / reviewQueue.length) * 100)
+    return Math.round((reviewIndex / reviewQueue.length) * 100)
   }
 
   const getIntervalName = (level) => {
@@ -285,7 +245,8 @@ function SpacedRepetition({
     return `${SPACED_REPETITION_INTERVALS[level]}天后`
   }
 
-  if (!currentWord && reviewQueue.length === 0) {
+  // 无复习单词界面
+  if (reviewQueue.length === 0 || !currentWord) {
     return (
       <div className="container fade-in">
         <nav className="navbar">
@@ -302,10 +263,12 @@ function SpacedRepetition({
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <div style={{ fontSize: '60px', marginBottom: '20px' }}>🎉</div>
           <h2 style={{ fontSize: '28px', marginBottom: '16px', color: 'var(--dark)' }}>
-            今日复习已完成
+            {reviewQueue.length === 0 && reviewIndex === 0 ? '今日无需复习' : '今日复习已完成'}
           </h2>
           <p style={{ color: 'var(--gray)', marginBottom: '30px' }}>
-            根据遗忘曲线，明天将会提醒您复习
+            {reviewQueue.length === 0 && reviewIndex === 0
+              ? '根据遗忘曲线，今天没有需要复习的单词'
+              : '根据遗忘曲线，明天将会提醒您复习'}
           </p>
 
           <div className="card" style={{ maxWidth: '400px', margin: '0 auto' }}>
@@ -367,99 +330,6 @@ function SpacedRepetition({
             </button>
           </div>
         </div>
-
-        {/* 虚拟键盘 */}
-        <div className="card" style={{
-          maxWidth: '700px',
-          margin: '20px auto 0',
-          padding: '20px'
-        }}>
-          <h3 style={{
-            textAlign: 'center',
-            marginBottom: '15px',
-            color: 'var(--dark)',
-            fontSize: '16px',
-            fontWeight: '600'
-          }}>
-            虚拟键盘
-          </h3>
-
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px',
-            alignItems: 'center'
-          }}>
-            {keyboardRows.map((row, rowIndex) => (
-              <div key={rowIndex} style={{ display: 'flex', gap: '4px' }}>
-                {row.map((key) => (
-                  <button
-                    key={key}
-                    onClick={() => handleVirtualKeyPress(key)}
-                    style={{
-                      width: '40px',
-                      height: '48px',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '18px',
-                      fontWeight: '600',
-                      background: getKeyColor(key),
-                      color: getKeyColor(key) === '#e5e7eb' ? 'var(--dark)' : 'white',
-                      cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
-                      boxShadow: '0 3px 8px rgba(0, 0, 0, 0.1)'
-                    }}
-                    disabled={hasCheckedAnswer}
-                    onMouseDown={(e) => e.target.style.transform = 'scale(0.95)'}
-                    onMouseUp={(e) => e.target.style.transform = 'scale(1)'}
-                    onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-                  >
-                    {key.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-            ))}
-
-            <div style={{ display: 'flex', gap: '4px', marginTop: '6px' }}>
-              <button
-                onClick={() => handleVirtualKeyPress('BACK')}
-                style={{
-                  width: '90px',
-                  height: '48px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  background: '#e5e7eb',
-                  color: 'var(--dark)',
-                  cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s ease',
-                  boxShadow: '0 3px 8px rgba(0, 0, 0, 0.1)'
-                }}
-                disabled={hasCheckedAnswer}
-              >
-                ← Back
-              </button>
-              <button
-                style={{
-                  width: '250px',
-                  height: '48px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  background: '#e5e7eb',
-                  color: 'var(--dark)',
-                  cursor: 'default',
-                  opacity: 0.6
-                }}
-                disabled
-              >
-                Space 已禁用
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
     )
   }
@@ -477,41 +347,6 @@ function SpacedRepetition({
         </div>
       </nav>
 
-      {/* 统计信息 */}
-      <div style={{
-        display: 'flex',
-        gap: '6px',
-        justifyContent: 'center',
-        flexWrap: 'wrap',
-        marginBottom: '8px',
-        flexShrink: 0
-      }}>
-        <span style={{
-          display: 'inline-block',
-          padding: '4px 10px',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
-          borderRadius: '12px',
-          fontSize: '12px',
-          fontWeight: '600'
-        }}>
-          连续正确: {streak}
-        </span>
-        <span style={{
-          display: 'inline-block',
-          padding: '4px 10px',
-          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-          color: 'white',
-          borderRadius: '12px',
-          fontSize: '12px',
-          fontWeight: '600'
-        }}>
-          正确率: {reviewStats.correct + reviewStats.wrong > 0
-            ? Math.round((reviewStats.correct / (reviewStats.correct + reviewStats.wrong)) * 100)
-            : 0}%
-        </span>
-      </div>
-
       <div className="card" style={{
         maxWidth: '800px',
         margin: '0 auto',
@@ -526,7 +361,7 @@ function SpacedRepetition({
             fontSize: '14px',
             color: 'var(--gray)'
           }}>
-            <span>进度: {reviewIndex + 1} / {reviewQueue.length}</span>
+            <span>已复习: {reviewIndex} / {reviewQueue.length}</span>
             <span>{getProgressPercent()}%</span>
           </div>
           <div style={{
@@ -584,495 +419,306 @@ function SpacedRepetition({
           </span>
         </div>
 
-        {/* 提示信息 */}
-        {showHint && !hasCheckedAnswer && (
-          <div style={{
-            padding: '6px 10px',
-            background: 'rgba(99, 102, 241, 0.1)',
-            borderRadius: '6px',
-            marginBottom: '8px'
-          }}>
-            <p style={{ color: 'var(--primary)', fontWeight: '500', marginBottom: '2px', fontSize: '11px' }}>
-              单词长度: {currentWord.word.length} 个字母
-            </p>
-            <p style={{ color: 'var(--gray)', fontSize: '10px', fontStyle: 'italic' }}>
-              例句: "{currentWord.example}"
-            </p>
-          </div>
-        )}
-
-        {/* 单词释义 */}
-        <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-          {showWord ? (
-            <>
-              <div style={{
-                fontSize: '24px',
-                color: 'var(--dark)',
-                fontWeight: '800',
-                marginBottom: '3px',
-                lineHeight: '1.3'
-              }}>
-                {currentWord.word}
-              </div>
-              {currentWord.phonetic && (
-                <div style={{
-                  fontSize: '11px',
-                  color: 'var(--gray)',
-                  fontFamily: 'Arial, sans-serif',
-                  marginBottom: '2px'
+        {/* 单词展示区域 */}
+        <div style={{ marginBottom: '40px' }}>
+          <div style={{ marginBottom: '24px' }}>
+            {showWord || hasCheckedAnswer ? (
+              <>
+                <h1 style={{
+                  fontSize: '56px',
+                  fontWeight: '800',
+                  color: 'var(--dark)',
+                  marginBottom: '12px',
+                  lineHeight: '1.2'
                 }}>
-                  📢 {currentWord.phonetic}
+                  {currentWord.word}
+                </h1>
+                {currentWord.phonetic && (
+                  <p style={{
+                    fontSize: '20px',
+                    color: 'var(--gray)',
+                    fontFamily: 'Arial, sans-serif',
+                    fontWeight: '400',
+                    marginBottom: '16px'
+                  }}>
+                    📢 {currentWord.phonetic}
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <h1 style={{
+                  fontSize: '24px',
+                  color: 'var(--primary)',
+                  fontWeight: '600',
+                  marginBottom: '16px'
+                }}>
+                  {currentWord.meaning}
+                </h1>
+                {currentWord.phonetic && (
+                  <p style={{
+                    fontSize: '18px',
+                    color: 'var(--gray)',
+                    fontFamily: 'Arial, sans-serif',
+                    marginBottom: '20px'
+                  }}>
+                    📢 {currentWord.phonetic}
+                  </p>
+                )}
+                <p style={{ fontSize: '14px', color: 'var(--gray)', marginBottom: '20px' }}>
+                  请拼写这个单词
+                </p>
+
+                {/* 占位符 */}
+                <div style={{
+                  display: 'flex',
+                  gap: '8px',
+                  justifyContent: 'center',
+                  marginBottom: '20px'
+                }}>
+                  {Array(currentWord.word.length).fill(0).map((_, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        width: '40px',
+                        height: '50px',
+                        borderBottom: '3px solid var(--gray)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '24px',
+                        fontWeight: '700',
+                        color: userInput[index]
+                          ? showResult === 'correct'
+                            ? '#10b981'
+                            : showResult === 'wrong'
+                              ? '#ef4444'
+                              : 'var(--dark)'
+                          : 'var(--gray)'
+                      }}
+                    >
+                      {userInput[index] || ''}
+                    </div>
+                  ))}
                 </div>
-              )}
-              <div style={{
-                fontSize: '10px',
-                color: 'var(--primary)',
-                marginBottom: '6px',
-                fontWeight: '600'
-              }}>
-                释义: {currentWord.meaning}
-              </div>
-            </>
-          ) : (
+              </>
+            )}
+          </div>
+
+          {(showWord || hasCheckedAnswer) && (
             <>
-              <div style={{
-                fontSize: '15px',
+              <p style={{
+                fontSize: '24px',
                 color: 'var(--primary)',
                 fontWeight: '600',
-                marginBottom: '3px',
-                lineHeight: '1.3'
+                marginBottom: '16px'
               }}>
                 {currentWord.meaning}
-              </div>
-              {currentWord.phonetic && (
-                <div style={{
-                  fontSize: '11px',
-                  color: 'var(--gray)',
-                  fontFamily: 'Arial, sans-serif',
-                  marginBottom: '2px'
-                }}>
-                  📢 {currentWord.phonetic}
-                </div>
-              )}
-              <div style={{
-                fontSize: '10px',
+              </p>
+              <p style={{
+                fontSize: '18px',
                 color: 'var(--gray)',
-                marginBottom: '6px'
+                fontStyle: 'italic'
               }}>
-                请拼写这个单词
-              </div>
+                "{currentWord.example}"
+              </p>
             </>
           )}
         </div>
 
-        {/* 输入框 */}
-        <div style={{
-          position: 'relative',
-          marginBottom: '8px'
-        }}>
-          {/* 显示占位符 */}
+        {/* 错误时显示正确答案 */}
+        {showResult === 'wrong' && hasCheckedAnswer && (
           <div style={{
-            display: 'flex',
-            gap: '2px',
-            justifyContent: 'center',
-            marginBottom: '6px'
-          }}>
-            {currentWord.word.split('').map((char, index) => {
-              // 如果是空格，显示空占位符（没有下划线）
-              if (char === ' ') {
-                return (
-                  <div
-                    key={index}
-                    style={{
-                      width: '10px',
-                      height: '28px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  />
-                )
-              }
-
-              // 计算实际的用户输入索引（跳过空格）
-              let inputIndex = 0
-              let charCount = 0
-              for (let i = 0; i < index; i++) {
-                if (currentWord.word[i] !== ' ') {
-                  charCount++
-                }
-              }
-              inputIndex = charCount
-
-              return (
-                <div
-                  key={index}
-                  style={{
-                    width: '22px',
-                    height: '28px',
-                    borderBottom: `2px solid ${
-                      userInput[inputIndex]
-                        ? showResult === 'correct'
-                          ? '#10b981'
-                          : showResult === 'wrong'
-                            ? userInput[inputIndex].toLowerCase() === currentWord.word[index].toLowerCase()
-                              ? '#10b981'
-                              : '#ef4444'
-                            : 'var(--primary)'
-                        : '#e5e7eb'
-                    }`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '13px',
-                    fontWeight: '700',
-                    color: userInput[inputIndex]
-                      ? showResult === 'correct'
-                        ? '#10b981'
-                        : showResult === 'wrong'
-                          ? userInput[inputIndex].toLowerCase() === currentWord.word[index].toLowerCase()
-                            ? '#10b981'
-                            : '#ef4444'
-                          : 'var(--dark)'
-                      : 'var(--gray)',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  {userInput[inputIndex] || ''}
-                </div>
-              )
-            })}
-          </div>
-
-          <input
-            ref={inputRef}
-            type="text"
-            value={userInput}
-            onChange={handleInputChange}
-            onKeyPress={handleEnterKeyPress}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            placeholder="输入单词..."
-            autoComplete="off"
-            autoCapitalize="off"
-            autoCorrect="off"
-            spellCheck={false}
-            disabled={hasCheckedAnswer}
-            style={{
-              width: '100%',
-              padding: '6px 10px',
-              fontSize: '16px',
-              fontWeight: '600',
-              border: `2px solid ${
-                showResult === 'correct' ? '#10b981' :
-                showResult === 'wrong' ? '#ef4444' :
-                isFocused ? 'var(--primary)' : '#e5e7eb'
-              }`,
-              borderRadius: '6px',
-              outline: 'none',
-              textAlign: 'center',
-              transition: 'all 0.3s ease',
-              background: hasCheckedAnswer ? '#f9fafb' : 'white',
-              color: showResult === 'correct' ? '#10b981' :
-                     showResult === 'wrong' ? '#ef4444' :
-                     'var(--dark)',
-              letterSpacing: '2px',
-              textTransform: 'lowercase'
-            }}
-          />
-        </div>
-
-        {/* 结果反馈 */}
-        {showResult === 'correct' && (
-          <div style={{
-            padding: '6px 10px',
-            background: 'rgba(16, 185, 129, 0.1)',
-            borderRadius: '6px',
-            marginBottom: '8px',
-            animation: 'fade-in 0.3s ease'
-          }}>
-            <p style={{
-              fontSize: '13px',
-              color: '#10b981',
-              fontWeight: '600',
-              marginBottom: '2px',
-              textAlign: 'center'
-            }}>
-              ✓ 回答正确！
-            </p>
-            <p style={{
-              fontSize: '10px',
-              color: 'var(--gray)',
-              textAlign: 'center'
-            }}>
-              自动进入下一题...
-            </p>
-          </div>
-        )}
-
-        {showResult === 'wrong' && (
-          <div style={{
-            padding: '6px 10px',
+            padding: '20px',
             background: 'rgba(239, 68, 68, 0.1)',
-            borderRadius: '6px',
-            marginBottom: '8px',
-            animation: 'fade-in 0.3s ease'
+            borderRadius: '12px',
+            marginBottom: '20px'
           }}>
             <p style={{
-              fontSize: '13px',
+              fontSize: '20px',
               color: 'var(--danger)',
               fontWeight: '600',
-              marginBottom: '3px',
-              textAlign: 'center'
+              marginBottom: '10px'
             }}>
               正确答案是: {currentWord.word}
             </p>
             {currentWord.phonetic && (
               <p style={{
-                fontSize: '10px',
+                fontSize: '16px',
                 color: 'var(--gray)',
-                textAlign: 'center',
-                marginBottom: '2px'
+                fontWeight: '500'
               }}>
                 音标: {currentWord.phonetic}
               </p>
             )}
-            <p style={{
-              fontSize: '9px',
-              color: 'var(--gray)',
-              fontStyle: 'italic',
-              textAlign: 'center'
-            }}>
-              "{currentWord.example}"
-            </p>
           </div>
         )}
 
-        {/* 操作按钮区域 */}
+        {/* 操作按钮 */}
         <div style={{
           display: 'flex',
-          gap: '8px',
+          gap: '12px',
           justifyContent: 'center',
-          marginTop: 'auto'
+          marginBottom: '40px',
+          flexWrap: 'wrap'
         }}>
+          {!hasCheckedAnswer && !showWord && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowHint(!showHint)}
+            >
+              💡 {showHint ? '隐藏提示' : '显示提示'}
+            </button>
+          )}
+
+          {!showWord && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowWord(!showWord)}
+            >
+              👁️ {showWord ? '隐藏单词' : '查看单词'}
+            </button>
+          )}
+
           {!hasCheckedAnswer && (
-            <>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setShowHint(!showHint)}
-                style={{
-                  flex: 1,
-                  padding: '7px 10px',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}
-              >
-                💡 {showHint ? '隐藏提示' : '显示提示'}
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={submitAnswer}
-                disabled={userInput.length === 0}
-                style={{
-                  flex: 2,
-                  padding: '7px 10px',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  opacity: userInput.length === 0 ? 0.5 : 1
-                }}
-              >
-                检查答案
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setShowWord(!showWord)}
-                style={{
-                  flex: 1,
-                  padding: '7px 10px',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}
-              >
-                👁️ {showWord ? '隐藏单词' : '查看单词'}
-              </button>
-            </>
+            <button
+              className="btn btn-danger"
+              onClick={skipWord}
+            >
+              跳过 →
+            </button>
           )}
-          {hasCheckedAnswer && showResult === 'wrong' && (
-            <>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setShowHint(!showHint)}
-                style={{
-                  flex: 1,
-                  padding: '7px 10px',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}
-              >
-                💡 {showHint ? '隐藏提示' : '显示提示'}
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={retryWord}
-                style={{
-                  flex: 1,
-                  padding: '7px 10px',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}
-              >
-                重新拼写
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={skipWord}
-                style={{
-                  flex: 1,
-                  padding: '7px 10px',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}
-              >
-                跳过
-              </button>
-            </>
+
+          {!hasCheckedAnswer && !showWord && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={submitAnswer}
+              disabled={userInput.length === 0}
+            >
+              检查答案 (Enter)
+            </button>
           )}
-          {hasCheckedAnswer && showResult === 'correct' && (
-            <>
-              <button
-                className="btn btn-secondary"
-                onClick={nextWord}
-                style={{
-                  flex: 1,
-                  padding: '7px 10px',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}
-              >
-                下一个单词
-              </button>
-              <button
-                className="btn btn-success"
-                onClick={markAsMastered}
-                style={{
-                  flex: 1,
-                  padding: '7px 10px',
-                  fontSize: '12px',
-                  fontWeight: '600'
-                }}
-              >
-                ✓ 已掌握
-              </button>
-            </>
+
+          {hasCheckedAnswer && (
+            <button className="btn btn-primary" onClick={nextWord}>
+              下一个单词 (Space)
+            </button>
+          )}
+
+          {hasCheckedAnswer && (
+            <button className="btn btn-success" onClick={markAsMastered}>
+              ✓ 已掌握
+            </button>
           )}
         </div>
 
-        {/* 虚拟键盘 */}
-        <div className="card" style={{
-          maxWidth: '700px',
-          margin: '20px auto 0',
-          padding: '20px'
-        }}>
-          <h3 style={{
-            textAlign: 'center',
-            marginBottom: '15px',
-            color: 'var(--dark)',
-            fontSize: '16px',
-            fontWeight: '600'
-          }}>
-            虚拟键盘
-          </h3>
-
+        {showHint && !hasCheckedAnswer && (
           <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px',
-            alignItems: 'center'
+            padding: '16px 24px',
+            background: 'rgba(99, 102, 241, 0.1)',
+            borderRadius: '12px',
+            marginBottom: '20px'
           }}>
-            {keyboardRows.map((row, rowIndex) => (
-              <div key={rowIndex} style={{ display: 'flex', gap: '4px' }}>
-                {row.map((key) => (
-                  <button
-                    key={key}
-                    onClick={() => handleVirtualKeyPress(key)}
-                    style={{
-                      width: '40px',
-                      height: '48px',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '18px',
-                      fontWeight: '600',
-                      background: getKeyColor(key),
-                      color: getKeyColor(key) === '#e5e7eb' ? 'var(--dark)' : 'white',
-                      cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
-                      boxShadow: '0 3px 8px rgba(0, 0, 0, 0.1)'
-                    }}
-                    disabled={hasCheckedAnswer}
-                    onMouseDown={(e) => e.target.style.transform = 'scale(0.95)'}
-                    onMouseUp={(e) => e.target.style.transform = 'scale(1)'}
-                    onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
-                  >
-                    {key.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-            ))}
+            <p style={{ color: 'var(--primary)', fontWeight: '500', marginBottom: '8px' }}>
+              单词长度: {currentWord.word.length} 个字母
+            </p>
+            <p style={{ color: 'var(--gray)', fontSize: '14px', fontStyle: 'italic' }}>
+              例句: "{currentWord.example}"
+            </p>
+          </div>
+        )}
+      </div>
 
-            <div style={{ display: 'flex', gap: '4px', marginTop: '6px' }}>
-              <button
-                onClick={() => handleVirtualKeyPress('BACK')}
-                style={{
-                  width: '90px',
-                  height: '48px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  background: '#e5e7eb',
-                  color: 'var(--dark)',
-                  cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s ease',
-                  boxShadow: '0 3px 8px rgba(0, 0, 0, 0.1)'
-                }}
-                disabled={hasCheckedAnswer}
-              >
-                ← Back
-              </button>
-              <button
-                style={{
-                  width: '250px',
-                  height: '48px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  background: '#e5e7eb',
-                  color: 'var(--dark)',
-                  cursor: 'default',
-                  opacity: 0.6
-                }}
-                disabled
-              >
-                Space 已禁用
-              </button>
+      {/* 虚拟键盘 */}
+      <div className="card" style={{
+        maxWidth: '700px',
+        margin: '0 auto',
+        padding: '30px'
+      }}>
+        <h3 style={{
+          textAlign: 'center',
+          marginBottom: '20px',
+          color: 'var(--dark)',
+          fontSize: '18px',
+          fontWeight: '600'
+        }}>
+          虚拟键盘
+        </h3>
+
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          alignItems: 'center'
+        }}>
+          {keyboardRows.map((row, rowIndex) => (
+            <div key={rowIndex} style={{ display: 'flex', gap: '6px' }}>
+              {row.map((key) => (
+                <button
+                  key={key}
+                  onClick={() => handleKeyPress(key)}
+                  style={{
+                    width: '48px',
+                    height: '56px',
+                    border: 'none',
+                    borderRadius: '10px',
+                    fontSize: '20px',
+                    fontWeight: '600',
+                    background: '#e5e7eb',
+                    color: 'var(--dark)',
+                    cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
+                  }}
+                  disabled={hasCheckedAnswer}
+                >
+                  {key.toUpperCase()}
+                </button>
+              ))}
             </div>
+          ))}
+
+          <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+            <button
+              onClick={() => handleKeyPress('BACK')}
+              style={{
+                width: '100px',
+                height: '56px',
+                border: 'none',
+                borderRadius: '10px',
+                fontSize: '16px',
+                fontWeight: '600',
+                background: '#e5e7eb',
+                color: 'var(--dark)',
+                cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
+              }}
+              disabled={hasCheckedAnswer}
+            >
+              ← Back
+            </button>
+            <button
+              onClick={() => handleKeyPress('SPACE')}
+              style={{
+                width: '300px',
+                height: '56px',
+                border: 'none',
+                borderRadius: '10px',
+                fontSize: '16px',
+                fontWeight: '600',
+                background: '#e5e7eb',
+                color: 'var(--dark)',
+                cursor: hasCheckedAnswer ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
+              }}
+              disabled={hasCheckedAnswer}
+            >
+              Space
+            </button>
           </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </div>
   )
 }
