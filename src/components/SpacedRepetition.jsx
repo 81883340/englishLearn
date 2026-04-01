@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 
 // 遗忘曲线时间间隔（天）
@@ -12,14 +12,13 @@ function SpacedRepetition({
 }) {
   const [currentWord, setCurrentWord] = useState(null)
   const [userInput, setUserInput] = useState('')
-  const [showResult, setShowResult] = useState(null) // 'correct' 或 'wrong'
+  const [showResult, setShowResult] = useState(null)
   const [showHint, setShowHint] = useState(false)
   const [hasCheckedAnswer, setHasCheckedAnswer] = useState(false)
   const [todayReviewCount, setTodayReviewCount] = useState(0)
   const [reviewQueue, setReviewQueue] = useState([])
-  const [reviewIndex, setReviewIndex] = useState(0) // 已完成的单词数量
+  const [reviewIndex, setReviewIndex] = useState(0)
   const [showWord, setShowWord] = useState(false)
-  const isMounted = useRef(true)
 
   // 获取今天需要复习的单词
   const getTodayReviewWords = useCallback(() => {
@@ -33,156 +32,124 @@ function SpacedRepetition({
     })
   }, [mistakeBook])
 
-  // 初始化复习队列（仅在组件挂载时执行一次）
+  // 初始化复习队列
   useEffect(() => {
-    isMounted.current = true
     const todayWords = getTodayReviewWords()
     setReviewQueue(todayWords)
     setTodayReviewCount(todayWords.length)
 
     if (todayWords.length > 0) {
       setCurrentWord(todayWords[0])
-      setReviewIndex(0)
     }
+  }, [mistakeBook])
 
-    return () => {
-      isMounted.current = false
+  // 更新复习进度
+  const updateReviewProgress = (wordId, correct) => {
+    const item = mistakeBook.find(m => m.id === wordId)
+    if (!item) return
+
+    if (correct) {
+      // 答对，更新到下一个复习间隔
+      const nextInterval = SPACED_REPETITION_INTERVALS[item.repetitionLevel] || 30
+      const nextReviewDate = new Date()
+      nextReviewDate.setDate(nextReviewDate.getDate() + nextInterval)
+
+      setMistakeBook(mistakeBook.map(m =>
+        m.id === wordId
+          ? {
+              ...m,
+              repetitionLevel: Math.min(item.repetitionLevel + 1, SPACED_REPETITION_INTERVALS.length - 1),
+              nextReviewDate: nextReviewDate.toISOString(),
+              lastReviewDate: new Date().toISOString()
+            }
+          : m
+      ))
+
+      toast.success(`下次复习: ${nextInterval}天后`)
+    } else {
+      // 答错，重置复习间隔
+      const nextReviewDate = new Date()
+      nextReviewDate.setDate(nextReviewDate.getDate() + 1)
+
+      setMistakeBook(mistakeBook.map(m =>
+        m.id === wordId
+          ? {
+              ...m,
+              wrongCount: item.wrongCount + 1,
+              repetitionLevel: 0,
+              nextReviewDate: nextReviewDate.toISOString(),
+              wrongDate: new Date().toISOString()
+            }
+          : m
+      ))
+
+      toast.error('已重置到第一天复习')
     }
-  }, []) // 空依赖，只执行一次
-
-  // 更新全局错词本（函数式更新确保最新状态）
-  const updateGlobalMistakeBook = useCallback((wordId, updateFn) => {
-    setMistakeBook(prevBook => {
-      const item = prevBook.find(m => m.id === wordId)
-      if (!item) return prevBook
-      return prevBook.map(m => m.id === wordId ? updateFn(m) : m)
-    })
-  }, [setMistakeBook])
-
-  // 提交答案后的处理（正确/错误）
-  const processAnswer = useCallback((correct) => {
-    if (!currentWord) return
-
-    // 更新全局错词本
-    updateGlobalMistakeBook(currentWord.id, (item) => {
-      if (correct) {
-        // 答对，更新到下一个复习间隔
-        const nextLevel = Math.min(item.repetitionLevel + 1, SPACED_REPETITION_INTERVALS.length - 1)
-        const nextInterval = SPACED_REPETITION_INTERVALS[nextLevel] || 30
-        const nextReviewDate = new Date()
-        nextReviewDate.setDate(nextReviewDate.getDate() + nextInterval)
-
-        toast.success(`下次复习: ${nextInterval}天后`)
-        return {
-          ...item,
-          repetitionLevel: nextLevel,
-          nextReviewDate: nextReviewDate.toISOString(),
-          lastReviewDate: new Date().toISOString()
-        }
-      } else {
-        // 答错，重置复习间隔
-        const nextReviewDate = new Date()
-        nextReviewDate.setDate(nextReviewDate.getDate() + 1)
-
-        toast.error('已重置到第一天复习')
-        return {
-          ...item,
-          wrongCount: item.wrongCount + 1,
-          repetitionLevel: 0,
-          nextReviewDate: nextReviewDate.toISOString(),
-          wrongDate: new Date().toISOString()
-        }
-      }
-    })
-
-    // 从当前复习队列中移除该单词（无论对错，本次复习结束）
-    setReviewQueue(prevQueue => prevQueue.filter((_, idx) => idx !== reviewIndex))
-    // 更新已复习数量
-    setReviewIndex(prev => prev + 1)
-  }, [currentWord, reviewIndex, updateGlobalMistakeBook])
+  }
 
   // 提交答案
   const submitAnswer = () => {
-    if (!currentWord || userInput.length === 0 || hasCheckedAnswer) return
+    if (!currentWord || userInput.length === 0) return
 
     setHasCheckedAnswer(true)
     const correct = userInput.toLowerCase() === currentWord.word.toLowerCase()
-    setShowResult(correct ? 'correct' : 'wrong')
-    processAnswer(correct)
+
+    if (correct) {
+      setShowResult('correct')
+      updateReviewProgress(currentWord.id, true)
+    } else {
+      setShowResult('wrong')
+      updateReviewProgress(currentWord.id, false)
+    }
   }
 
-  // 移动到下一个单词
-  const nextWord = useCallback(() => {
-    // 重置输入和状态
+  // 下一个单词
+  const nextWord = () => {
     setUserInput('')
     setShowResult(null)
     setShowHint(false)
     setHasCheckedAnswer(false)
     setShowWord(false)
 
-    // 获取更新后的队列（依赖 reviewQueue 状态）
-    setReviewQueue(prevQueue => {
-      const newIndex = reviewIndex // 注意：此时 reviewIndex 已经 +1
-      if (newIndex < prevQueue.length) {
-        setCurrentWord(prevQueue[newIndex])
-        return prevQueue
-      } else {
-        // 复习完成
-        setCurrentWord(null)
-        return prevQueue
-      }
-    })
-  }, [reviewIndex])
-
-  // 当队列变化且当前单词为空但队列非空时，自动设置当前单词
-  useEffect(() => {
-    if (!currentWord && reviewQueue.length > 0 && reviewIndex < reviewQueue.length) {
-      setCurrentWord(reviewQueue[reviewIndex])
+    const newIndex = reviewIndex + 1
+    if (newIndex < reviewQueue.length) {
+      setReviewIndex(newIndex)
+      setCurrentWord(reviewQueue[newIndex])
+    } else {
+      // 复习完成
+      setCurrentWord(null)
+      toast.success('今日复习完成！🎉')
     }
-  }, [currentWord, reviewQueue, reviewIndex])
+  }
 
-  // 跳过当前单词（移到队列末尾）
+  // 跳过当前单词
   const skipWord = () => {
-    if (!currentWord || hasCheckedAnswer) return
-
-    if (reviewQueue.length === 1) {
-      toast('只有一个待复习单词，无法跳过', { icon: '⚠️' })
-      return
-    }
-
-    setReviewQueue(prevQueue => {
-      const newQueue = [...prevQueue]
-      const skipped = newQueue.splice(reviewIndex, 1)[0]
-      newQueue.push(skipped)
-      // 保持当前索引不变，因为移除了一个元素，新队列中当前索引位置是下一个单词
-      setCurrentWord(newQueue[reviewIndex])
-      return newQueue
-    })
-    toast.info('已跳过，稍后复习')
-
-    // 重置输入状态
     setUserInput('')
     setShowResult(null)
     setShowHint(false)
     setHasCheckedAnswer(false)
-    setShowWord(false)
+
+    // 将当前单词移到队列末尾
+    const skippedWord = currentWord
+    const newQueue = [...reviewQueue]
+    newQueue.splice(reviewIndex, 1)
+    newQueue.push(skippedWord)
+
+    setReviewQueue(newQueue)
+    setReviewIndex(0)
+    setCurrentWord(newQueue[0])
+    toast.info('已跳过，稍后复习')
   }
 
   // 标记为已掌握
   const markAsMastered = () => {
-    if (!currentWord) return
-    if (window.confirm(`确定"${currentWord.word}"已掌握吗？将从错词本移除。`)) {
-      // 从全局错词本移除
-      setMistakeBook(prevBook => prevBook.filter(m => m.id !== currentWord.id))
-      // 从复习队列中移除
-      setReviewQueue(prevQueue => prevQueue.filter((_, idx) => idx !== reviewIndex))
-      setReviewIndex(prev => prev + 1)
-      toast.success('单词已移除')
+    if (confirm(`确定"${currentWord.word}"已掌握吗？将从错词本移除。`)) {
+      setMistakeBook(mistakeBook.filter(m => m.id !== currentWord.id))
       nextWord()
+      toast.success('单词已移除')
     }
   }
 
-  // 虚拟键盘处理
   const keyboardRows = [
     ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
     ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
@@ -209,15 +176,12 @@ function SpacedRepetition({
       if (hasCheckedAnswer) {
         if (key === ' ') {
           e.preventDefault()
-          if (reviewQueue.length > 0 && reviewIndex < reviewQueue.length) {
-            nextWord()
-          }
+          nextWord()
         }
         return
       }
 
       if (key === 'backspace') {
-        e.preventDefault()
         handleKeyPress('BACK')
       } else if (key === ' ') {
         e.preventDefault()
@@ -232,12 +196,11 @@ function SpacedRepetition({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [hasCheckedAnswer, userInput, reviewQueue, reviewIndex, nextWord, submitAnswer])
+  }, [hasCheckedAnswer, userInput])
 
-  // 进度百分比（已完成的单词数 / 总单词数）
   const getProgressPercent = () => {
     if (reviewQueue.length === 0) return 0
-    return Math.round((reviewIndex / reviewQueue.length) * 100)
+    return Math.round(((reviewIndex) / reviewQueue.length) * 100)
   }
 
   const getIntervalName = (level) => {
@@ -245,8 +208,7 @@ function SpacedRepetition({
     return `${SPACED_REPETITION_INTERVALS[level]}天后`
   }
 
-  // 无复习单词界面
-  if (reviewQueue.length === 0 || !currentWord) {
+  if (!currentWord && reviewQueue.length === 0) {
     return (
       <div className="container fade-in">
         <nav className="navbar">
@@ -263,12 +225,10 @@ function SpacedRepetition({
         <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
           <div style={{ fontSize: '60px', marginBottom: '20px' }}>🎉</div>
           <h2 style={{ fontSize: '28px', marginBottom: '16px', color: 'var(--dark)' }}>
-            {reviewQueue.length === 0 && reviewIndex === 0 ? '今日无需复习' : '今日复习已完成'}
+            今日复习已完成
           </h2>
           <p style={{ color: 'var(--gray)', marginBottom: '30px' }}>
-            {reviewQueue.length === 0 && reviewIndex === 0
-              ? '根据遗忘曲线，今天没有需要复习的单词'
-              : '根据遗忘曲线，明天将会提醒您复习'}
+            根据遗忘曲线，明天将会提醒您复习
           </p>
 
           <div className="card" style={{ maxWidth: '400px', margin: '0 auto' }}>
@@ -361,7 +321,7 @@ function SpacedRepetition({
             fontSize: '14px',
             color: 'var(--gray)'
           }}>
-            <span>已复习: {reviewIndex} / {reviewQueue.length}</span>
+            <span>进度: {reviewIndex + 1} / {reviewQueue.length}</span>
             <span>{getProgressPercent()}%</span>
           </div>
           <div style={{
@@ -526,8 +486,7 @@ function SpacedRepetition({
           )}
         </div>
 
-        {/* 错误时显示正确答案 */}
-        {showResult === 'wrong' && hasCheckedAnswer && (
+        {showResult === 'wrong' && !hasCheckedAnswer && (
           <div style={{
             padding: '20px',
             background: 'rgba(239, 68, 68, 0.1)',
